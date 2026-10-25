@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Fathom attack replay</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;485;535;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#FFFFFF}
+a{color:#FC72FF}a:hover{color:#FC72FF}
+button:focus-visible{outline:2px solid #FC72FF;outline-offset:2px}
+svg *{transform-box:fill-box}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes drawIn{from{stroke-dashoffset:var(--len,800)}to{stroke-dashoffset:0}}
+@keyframes popIn{0%{transform:scale(0);opacity:0}70%{transform:scale(1.15);opacity:1}100%{transform:scale(1);opacity:1}}
+@keyframes ring{0%{transform:scale(.6);opacity:.7}100%{transform:scale(2.4);opacity:0}}
+@keyframes growY{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes growX{from{width:0}}
+@keyframes flapClose{from{transform:scaleY(-1)}to{transform:scaleY(1)}}
+@keyframes slideInto{0%{transform:translateX(0);opacity:1}100%{transform:translateX(120px) scale(.5);opacity:0}}
+@keyframes rowIn{0%{opacity:0;transform:translateY(-12px);background:#FFEFFF}60%{opacity:1;transform:none;background:#FFEFFF}100%{background:#FFFFFF}}
+@keyframes shake{0%,100%{transform:none}20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
+@keyframes spike{0%{transform:scale(1)}40%{transform:scale(1.25)}100%{transform:scale(1)}}
+@keyframes shield{0%{box-shadow:0 0 0 0 rgba(64,182,107,.45)}100%{box-shadow:0 0 0 18px rgba(64,182,107,0)}}
+@keyframes livePulse{0%{box-shadow:0 0 0 0 rgba(252,114,255,.6)}100%{box-shadow:0 0 0 10px rgba(252,114,255,0)}}
+.draw{stroke-dasharray:var(--len,800);animation:drawIn 1.6s ease-out .3s both}
+.pop{transform-origin:center;animation:popIn .5s ease-out both}
+.ring{transform-origin:center;animation:ring 2s ease-out infinite}
+.fade{animation:fadeUp .5s ease-out both}
+.live{display:inline-block;width:8px;height:8px;border-radius:50%;background:#FC72FF;animation:livePulse 1.6s ease-out infinite}
+@media (prefers-reduced-motion: reduce){*{animation:none !important;transition:none !important}}
+</style>
+</helmet>
+<div style="min-height: 980px; background: radial-gradient(900px 500px at 50% -10%, #FFEFFF 0%, #FFFFFF 70%); color: #131313; font-family: Inter, system-ui, sans-serif; box-sizing: border-box">
+<header style="padding: 16px 24px; display: flex; flex-wrap: wrap; align-items: center; gap: 24px">
+<div style="display: flex; align-items: center; gap: 10px">
+<svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="#FC72FF" stroke-width="2" aria-hidden="true"><circle cx="14" cy="14" r="3" fill="#FC72FF"></circle><circle cx="14" cy="14" r="7.5" opacity="0.6"></circle><circle cx="14" cy="14" r="12" opacity="0.3"></circle></svg>
+<span style="font-size: 20px; font-weight: 600; color: #FC72FF">Fathom</span>
+</div>
+<nav aria-label="Main" style="display: flex; gap: 4px; flex-wrap: wrap">
+<a href="Main.dc.html" style="color: #7D7D7D; text-decoration: none; padding: 10px 14px; border-radius: 8px; font-size: 14px">Auction</a>
+<a href="Dashboard.dc.html" style="color: #7D7D7D; text-decoration: none; padding: 10px 14px; border-radius: 8px; font-size: 14px">Liquidity</a>
+<a href="Replay.dc.html" style="color: #131313; text-decoration: none; padding: 10px 14px; border-radius: 8px; background: #FFEFFF; font-size: 14px; font-weight: 500">Attack replay</a>
+<a href="Explainer.dc.html" style="color: #7D7D7D; text-decoration: none; padding: 10px 14px; border-radius: 8px; font-size: 14px; font-weight: 400">How it works</a>
+</nav>
+<span style="margin-left: auto; font-size: 12px; color: #7D7D7D; border: 1px solid #F0F0F0; border-radius: 999px; padding: 6px 12px">Stellar testnet · replay</span>
+</header>
+
+<main style="max-width: 1360px; margin: 0 auto; padding: 32px; display: flex; flex-direction: column; gap: 24px">
+<section style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 24px">
+<div style="display: flex; flex-direction: column; gap: 6px; max-width: 760px">
+<span style="font-size: 13px; color: #7D7D7D; letter-spacing: 0.08em; text-transform: uppercase">February 2026 · YieldBlox pattern</span>
+<h1 style="margin: 0; font-size: 34px; font-weight: 600">One trade pumped USTRY 100×. Two pools, two oracles.</h1>
+</div>
+<div style="display: flex; gap: 12px; flex-wrap: wrap">
+<button type="button" onClick="{{next}}" style="background: #FC72FF; color: #FFFFFF; border: none; border-radius: 10px; padding: 14px 20px; font-size: 15px; font-weight: 600; min-height: 48px; font-family: inherit; cursor: pointer">{{nextLabel}}</button>
+<button type="button" onClick="{{reset}}" style="background: #FFFFFF; color: #535353; border: 1px solid #F0F0F0; border-radius: 10px; padding: 14px 18px; font-size: 15px; min-height: 48px; font-family: inherit; cursor: pointer">Reset</button>
+</div>
+</section>
+
+<ol aria-label="Replay steps" style="list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 12px">
+<sc-for list="{{steps}}" as="s" hint-placeholder-count="3">
+<li style="{{s.style}}"><span style="font-variant-numeric: tabular-nums; font-size: 12px; color: #7D7D7D">{{s.num}}</span><span>{{s.text}}</span></li>
+</sc-for>
+</ol>
+
+<div style="{{chartStyle}}">
+<svg viewBox="0 0 1240 140" role="img" aria-label="USTRY DEX price jumps from $1.04 to $106 on one trade" style="width: 100%; height: auto">
+<line x1="40" y1="120" x2="1200" y2="120" stroke="#F0F0F0"></line>
+<path class="draw" style="--len: 1400" d="M40 116 L300 117 L520 115 L700 116 L720 14 L1200 14" fill="none" stroke="#E5484D" stroke-width="3"></path>
+<circle class="pop" style="animation-delay: 1.2s" cx="720" cy="14" r="7" fill="#E5484D"></circle>
+<circle class="ring" cx="720" cy="14" r="7" fill="none" stroke="#E5484D" stroke-width="2"></circle>
+<text x="40" y="104" font-size="13" fill="#7D7D7D">DEX price · $1.04</text>
+<text class="fade" style="animation-delay: 1.3s" x="736" y="40" font-size="15" font-weight="600" fill="#D93A3A">$106 after one trade (under $1 of hourly volume)</text>
+</svg>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: stretch">
+<section aria-label="Pool A" style="{{poolA.box}}">
+<div style="display: flex; align-items: center; gap: 10px">
+<h2 style="margin: 0; font-size: 20px; font-weight: 600">Pool A</h2>
+<span style="font-size: 13px; color: #7D7D7D">reads last DEX trade</span>
+<span style="{{poolA.pill}}">{{poolA.status}}</span>
+</div>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px">
+<div style="display: flex; flex-direction: column; gap: 4px"><span style="font-size: 12px; color: #7D7D7D">USTRY price it sees</span><span style="{{poolA.priceStyle}}">{{poolA.price}}</span></div>
+<div style="display: flex; flex-direction: column; gap: 4px"><span style="font-size: 12px; color: #7D7D7D">Pool funds (TVL)</span><span style="font-variant-numeric: tabular-nums; font-size: 28px">{{poolA.tvl}}</span></div>
+</div>
+<div style="height: 10px; border-radius: 5px; background: #F0F0F0; overflow: hidden"><div style="{{poolA.bar}}"></div></div>
+<p style="margin: 0; font-size: 14px; color: #535353; min-height: 44px">{{poolA.note}}</p>
+</section>
+
+<section aria-label="Pool B" style="{{poolB.box}}">
+<div style="display: flex; align-items: center; gap: 10px">
+<h2 style="margin: 0; font-size: 20px; font-weight: 600">Pool B</h2>
+<span style="font-size: 13px; color: #7D7D7D">reads Fathom</span>
+<span style="{{poolB.pill}}">{{poolB.status}}</span>
+</div>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px">
+<div style="display: flex; flex-direction: column; gap: 4px"><span style="font-size: 12px; color: #7D7D7D">USTRY price it sees</span><span style="font-variant-numeric: tabular-nums; font-size: 28px">$1.04</span></div>
+<div style="display: flex; flex-direction: column; gap: 4px"><span style="font-size: 12px; color: #7D7D7D">Pool funds (TVL)</span><span style="font-variant-numeric: tabular-nums; font-size: 28px">$10.2M</span></div>
+</div>
+<div style="height: 10px; border-radius: 5px; background: #F0F0F0; overflow: hidden"><div style="height: 100%; width: 100%; background: #40B66B"></div></div>
+<p style="margin: 0; font-size: 14px; color: #535353; min-height: 44px">{{poolB.note}}</p>
+</section>
+</div>
+
+<p style="margin: 0; font-size: 13px; color: #7D7D7D">Replay of the attack pattern with testnet contracts. Real event: about $10.2M drained from a Blend pool, about $7M later frozen by validators.</p>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":980}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { step: 0 }; }
+  renderVals() {
+    const s = this.state.step;
+    const texts = [
+      'Attacker buys USTRY on a DEX with under $1 of hourly volume. Price jumps 100×.',
+      'Attacker deposits USTRY as collateral and asks both pools for a large loan.',
+      'Pool A lends against the fake price. Pool B checks Fathom.'
+    ];
+    const stepStyle = (i) => {
+      const done = i < s;
+      return (done ? 'animation: fadeUp .4s ease-out both; ' : '') + 'flex: 1 1 280px; display: flex; flex-direction: column; gap: 6px; padding: 14px 16px; border-radius: 12px; font-size: 14px; border: 1px solid ' + (done ? '#FC72FF' : '#F0F0F0') + '; background: ' + (done ? '#FFEFFF' : '#F9F9F9') + '; color: ' + (done ? '#131313' : '#7D7D7D');
+    };
+    const box = (border, anim) => 'animation: ' + (anim || 'none') + '; flex: 1 1 480px; background: #F9F9F9; border: 1px solid ' + border + '; border-radius: 20px; padding: 24px; display: flex; flex-direction: column; gap: 18px';
+    const pill = (c, bg, b) => 'margin-left: auto; font-size: 12px; color: ' + c + '; border: 1px solid ' + b + '; background: ' + bg + '; border-radius: 999px; padding: 4px 10px';
+    const green = pill('#40B66B', '#EEF9F1', '#BFE5CF');
+    const red = pill('#D93A3A', '#FDECEC', '#F5C2C2');
+    const amber = pill('#B7791F', '#FFF6E0', '#F0D9A8');
+    const aNotes = [
+      'Price comes from the last DEX trade.',
+      'Last trade says USTRY is worth $106. Collateral looks 100× bigger.',
+      'Collateral looks huge. Loan approved.',
+      'Attacker walks away with the pool. USTRY was never worth $106.'
+    ];
+    const bNotes = [
+      'Price is the 7-auction median, capped at NAV. Depth comes from locked buy orders.',
+      'DEX trade ignored. Fathom still says $1.04 with 24,800 USTRY of depth.',
+      'Loan sized on $1.04 and capped by depth. Request too large.',
+      'Depth too low · borrow rejected. Pool keeps its funds.'
+    ];
+    return {
+      chartStyle: s >= 1 ? 'background: #FFFFFF; border: 1px solid #F0F0F0; border-radius: 20px; padding: 12px 16px; animation: fadeUp .4s ease-out both' : 'display: none',
+      next: () => this.setState({ step: Math.min(s + 1, 3) }),
+      reset: () => this.setState({ step: 0 }),
+      nextLabel: s === 0 ? 'Replay the February attack' : (s < 3 ? 'Next step' : 'Replay finished'),
+      steps: texts.map((t, i) => ({ num: 'Step ' + (i + 1), text: t, style: stepStyle(i) })),
+      poolA: {
+        box: box(s === 3 ? '#E5484D' : '#F0F0F0', s === 3 ? 'shake .5s ease-in-out' : 'none'),
+        pill: s === 0 ? green : (s === 3 ? red : amber),
+        status: s === 0 ? 'Normal' : (s === 3 ? 'Drained' : 'Price spike'),
+        price: s === 0 ? '$1.04' : '$106.00',
+        priceStyle: 'display: inline-block; transform-origin: left center; font-variant-numeric: tabular-nums; font-size: 28px; color: ' + (s === 0 ? '#131313' : '#D93A3A') + (s >= 1 ? '; animation: spike .6s ease-out' : ''),
+        tvl: s === 3 ? '$0' : '$10.2M',
+        bar: 'height: 100%; transition: width 1.8s ease-in, background .4s; background: ' + (s === 3 ? '#E5484D' : '#40B66B') + '; width: ' + (s === 3 ? '0%' : '100%'),
+        note: aNotes[s]
+      },
+      poolB: {
+        box: box(s === 3 ? '#40B66B' : '#F0F0F0', s === 3 ? 'shield 1.2s ease-out 3' : 'none'),
+        pill: (s === 3 ? amber : green) + (s === 3 ? '; animation: popIn .5s ease-out' : ''),
+        status: s === 3 ? 'Borrow rejected' : 'Normal',
+        note: bNotes[s]
+      }
+    };
+  }
+}
+</script>
+</body>
+</html>

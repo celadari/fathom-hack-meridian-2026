@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Fathom auction room</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;485;535;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#FFFFFF}
+button:focus-visible,a:focus-visible{outline:2px solid #FC72FF;outline-offset:2px}
+svg *{transform-box:fill-box}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes drawIn{from{stroke-dashoffset:var(--len,800)}to{stroke-dashoffset:0}}
+@keyframes popIn{0%{transform:scale(0);opacity:0}70%{transform:scale(1.15);opacity:1}100%{transform:scale(1);opacity:1}}
+@keyframes ring{0%{transform:scale(.6);opacity:.7}100%{transform:scale(2.4);opacity:0}}
+@keyframes growY{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes growX{from{width:0}}
+@keyframes flapClose{from{transform:scaleY(-1)}to{transform:scaleY(1)}}
+@keyframes slideInto{0%{transform:translateX(0);opacity:1}100%{transform:translateX(120px) scale(.5);opacity:0}}
+@keyframes rowIn{0%{opacity:0;transform:translateY(-12px);background:#FFEFFF}60%{opacity:1;transform:none;background:#FFEFFF}100%{background:#FFFFFF}}
+@keyframes shake{0%,100%{transform:none}20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
+@keyframes spike{0%{transform:scale(1)}40%{transform:scale(1.25)}100%{transform:scale(1)}}
+@keyframes shield{0%{box-shadow:0 0 0 0 rgba(64,182,107,.45)}100%{box-shadow:0 0 0 18px rgba(64,182,107,0)}}
+@keyframes livePulse{0%{box-shadow:0 0 0 0 rgba(252,114,255,.6)}100%{box-shadow:0 0 0 10px rgba(252,114,255,0)}}
+.draw{stroke-dasharray:var(--len,800);animation:drawIn 1.6s ease-out .3s both}
+.pop{transform-origin:center;animation:popIn .5s ease-out both}
+.ring{transform-origin:center;animation:ring 2s ease-out infinite}
+.fade{animation:fadeUp .5s ease-out both}
+.live{display:inline-block;width:8px;height:8px;border-radius:50%;background:#FC72FF;animation:livePulse 1.6s ease-out infinite}
+@keyframes sonar{0%{transform:scale(1);opacity:.8}100%{transform:scale(9);opacity:0}}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@keyframes sweep{from{transform:rotate(-14deg)}to{transform:rotate(14deg)}}
+@keyframes wave{from{transform:translateX(0)}to{transform:translateX(-20px)}}
+.sonar{transform-origin:center;animation:sonar 3s ease-out infinite}
+.bob{animation:bob 3.2s ease-in-out infinite}
+@media (prefers-reduced-motion: reduce){*{animation:none !important;transition:none !important}}
+</style>
+</helmet>
+<div style="min-height: 980px; background: radial-gradient(900px 500px at 50% -10%, #FFEFFF 0%, #FFFFFF 70%); color: #131313; font-family: Inter, system-ui, sans-serif; box-sizing: border-box">
+<header style="padding: 16px 24px; display: flex; flex-wrap: wrap; align-items: center; gap: 20px">
+<div style="display: flex; align-items: center; gap: 8px">
+<svg width="30" height="30" viewBox="0 0 28 28" fill="none" stroke="#FC72FF" stroke-width="2" aria-hidden="true"><circle cx="14" cy="14" r="3" fill="#FC72FF"></circle><circle cx="14" cy="14" r="7.5" opacity="0.6"></circle><circle cx="14" cy="14" r="12" opacity="0.3"></circle></svg>
+<span style="font-size: 20px; font-weight: 600; color: #FC72FF">Fathom</span>
+</div>
+<nav aria-label="Main" style="display: flex; gap: 4px">
+<a href="Main.dc.html" style="color: #131313; text-decoration: none; padding: 8px 12px; font-size: 16px; font-weight: 535">Auction</a>
+<a href="Dashboard.dc.html" style="color: #7D7D7D; text-decoration: none; padding: 8px 12px; font-size: 16px; font-weight: 485">Liquidity</a>
+<a href="Replay.dc.html" style="color: #7D7D7D; text-decoration: none; padding: 8px 12px; font-size: 16px; font-weight: 485">Attack replay</a>
+<a href="Explainer.dc.html" style="color: #7D7D7D; text-decoration: none; padding: 8px 12px; font-size: 16px; font-weight: 485">How it works</a>
+</nav>
+<div style="flex: 1 1 280px; max-width: 480px; margin: 0 auto; background: #F9F9F9; border: 1px solid #F0F0F0; border-radius: 20px; padding: 10px 16px; color: #7D7D7D; font-size: 15px">Search assets</div>
+<button type="button" style="background: #FEF4FF; color: #FC72FF; border: none; border-radius: 20px; padding: 10px 16px; font-size: 16px; font-weight: 535; min-height: 44px; font-family: inherit">Connect</button>
+</header>
+
+<main style="max-width: 1180px; margin: 0 auto; padding: 40px 24px; display: flex; flex-wrap: wrap; gap: 40px; justify-content: center; align-items: flex-start">
+<section aria-label="Place a sealed order" style="flex: 0 1 480px; display: flex; flex-direction: column; gap: 4px">
+<div style="display: flex; gap: 4px; padding: 0 4px 8px">
+<button type="button" onClick="{{pickBuy}}" style="{{buyStyle}}">Buy</button>
+<button type="button" onClick="{{pickSell}}" style="{{sellStyle}}">Sell</button>
+<span style="margin-left: auto; color: #7D7D7D; padding: 8px 4px; font-size: 14px">Closes in 02:14:37</span>
+</div>
+<div style="background: #F9F9F9; border: 1px solid #F0F0F0; border-radius: 20px; padding: 16px; display: flex; flex-direction: column; gap: 8px">
+<span style="color: #7D7D7D; font-size: 14px">{{youLabel}}</span>
+<div style="display: flex; align-items: center; gap: 12px"><span style="font-size: 36px; font-weight: 485; flex: 1">30,000</span><span style="background: #FFFFFF; border: 1px solid #F0F0F0; border-radius: 20px; padding: 6px 12px; font-weight: 535">USTRY</span></div>
+<span style="color: #7D7D7D; font-size: 14px">{{limitLabel}}</span>
+</div>
+<div style="align-self: center; margin: -14px 0; z-index: 1; width: 40px; height: 40px; border-radius: 12px; background: #F9F9F9; border: 4px solid #FFFFFF; display: flex; align-items: center; justify-content: center; color: #131313" aria-hidden="true">↓</div>
+<div style="background: #FFFFFF; border: 1px solid #F0F0F0; border-radius: 20px; padding: 16px; display: flex; flex-direction: column; gap: 8px">
+<span style="color: #7D7D7D; font-size: 14px">You lock</span>
+<div style="display: flex; align-items: center; gap: 12px"><span style="font-size: 36px; font-weight: 485; flex: 1">{{lockAmt}}</span><span style="background: #F9F9F9; border: 1px solid #F0F0F0; border-radius: 20px; padding: 6px 12px; font-weight: 535">{{lockTok}}</span></div>
+<span style="color: #7D7D7D; font-size: 14px">Hidden amount · standing 7 days</span>
+</div>
+<button type="button" onClick="{{seal}}" style="margin-top: 4px; background: #FC72FF; color: #FFFFFF; border: none; border-radius: 20px; padding: 18px; font-size: 18px; font-weight: 535; min-height: 56px; font-family: inherit; cursor: pointer">{{sealLabel}}</button>
+<div style="{{hintStyle}}"><span>Proof is generated in your browser</span><span>Nothing leaves it unsealed</span></div>
+<div aria-live="polite" style="{{panelStyle}}">
+<svg viewBox="0 0 440 120" role="img" aria-label="Order sealed into an envelope and proven" style="width: 100%; height: auto">
+<g style="animation: slideInto .9s ease-in .1s both"><rect x="20" y="35" width="110" height="50" rx="12" fill="#FFFFFF" stroke="#F0F0F0"></rect><text x="75" y="66" text-anchor="middle" font-size="14" font-weight="600" fill="#131313">{{orderText}}</text></g>
+<g transform="translate(170 18)"><rect x="0" y="14" width="100" height="66" rx="8" fill="#FFFFFF" stroke="#FC72FF" stroke-width="2"></rect><path d="M0 14 L50 50 L100 14" fill="#FFEFFF" stroke="#FC72FF" stroke-width="2" style="transform-origin: 50% 0%; animation: flapClose .4s ease-out 1s both"></path><g class="pop" style="animation-delay: 1.3s"><rect x="40" y="50" width="20" height="16" rx="3" fill="#FC72FF"></rect><path d="M44 50 v-5 a6 6 0 0 1 12 0 v5" fill="none" stroke="#FC72FF" stroke-width="2.5"></path></g></g>
+<g class="pop" style="animation-delay: 2.1s" transform="translate(330 22)"><circle cx="40" cy="40" r="34" fill="#EEF9F1"></circle><path d="M24 41 l10 10 l22 -22" fill="none" stroke="#40B66B" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"></path></g>
+</svg>
+<ol style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; font-size: 14px">
+<li class="fade" style="animation-delay: .4s; display: flex; gap: 8px"><span style="color: #40B66B">✓</span>Sealed in your browser · fingerprint 0x1f9a…c3e2</li>
+<li class="fade" style="animation-delay: 1.3s; display: flex; gap: 8px"><span style="color: #40B66B">✓</span>{{lockLine}}</li>
+<li class="fade" style="animation-delay: 2.1s; display: flex; gap: 8px"><span style="color: #40B66B">✓</span>Proof verified on Stellar: order is valid and paid for</li>
+</ol>
+</div>
+</section>
+
+<section aria-label="Auction" style="flex: 1 1 520px; display: flex; flex-direction: column; gap: 20px">
+<div style="position: relative; border-radius: 24px; overflow: hidden; background: linear-gradient(180deg, #FFF7FF 0%, #FFE3FF 45%, #F7C4FA 100%); border: 1px solid #F0F0F0">
+<svg viewBox="0 0 640 260" role="img" aria-label="Sonar measuring the market: sealed orders sit at different depths below the price line; depth today 24.8K USTRY" style="display: block; width: 100%; height: auto">
+<defs><linearGradient id="beam" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FC72FF" stop-opacity=".35"></stop><stop offset="1" stop-color="#FC72FF" stop-opacity="0"></stop></linearGradient></defs>
+<path d="M0 58 Q 40 50 80 58 T 160 58 T 240 58 T 320 58 T 400 58 T 480 58 T 560 58 T 640 58 V0 H0 Z" fill="#FFFFFF" opacity=".85" style="animation: wave 6s ease-in-out infinite alternate"></path>
+<g transform="translate(320 40)">
+<path d="M-14 0 h28 l-6 14 h-16 z" fill="#131313"></path>
+<rect x="-3" y="-14" width="6" height="14" rx="2" fill="#131313"></rect>
+</g>
+<path d="M320 56 L200 260 L440 260 Z" fill="url(#beam)" style="transform-origin: 320px 56px; animation: sweep 5s ease-in-out infinite alternate"></path>
+<g fill="none" stroke="#FC72FF" stroke-width="2">
+<circle class="sonar" cx="320" cy="56" r="20"></circle>
+<circle class="sonar" style="animation-delay: 1s" cx="320" cy="56" r="20"></circle>
+<circle class="sonar" style="animation-delay: 2s" cx="320" cy="56" r="20"></circle>
+</g>
+<g class="bob"><g transform="translate(150 118)"><rect width="34" height="24" rx="4" fill="#FFFFFF" stroke="#FC72FF" stroke-width="1.5"></rect><path d="M0 0 L17 12 L34 0" fill="none" stroke="#FC72FF" stroke-width="1.5"></path></g></g>
+<g class="bob" style="animation-delay: .7s"><g transform="translate(250 160)"><rect width="34" height="24" rx="4" fill="#FFFFFF" stroke="#FC72FF" stroke-width="1.5"></rect><path d="M0 0 L17 12 L34 0" fill="none" stroke="#FC72FF" stroke-width="1.5"></path></g></g>
+<g class="bob" style="animation-delay: 1.4s"><g transform="translate(372 132)"><rect width="34" height="24" rx="4" fill="#FFFFFF" stroke="#FC72FF" stroke-width="1.5"></rect><path d="M0 0 L17 12 L34 0" fill="none" stroke="#FC72FF" stroke-width="1.5"></path></g></g>
+<g class="bob" style="animation-delay: 2.1s"><g transform="translate(470 190)"><rect width="34" height="24" rx="4" fill="#FFFFFF" stroke="#FC72FF" stroke-width="1.5"></rect><path d="M0 0 L17 12 L34 0" fill="none" stroke="#FC72FF" stroke-width="1.5"></path></g></g>
+<g class="bob" style="animation-delay: 1s"><g transform="translate(90 200)"><rect width="34" height="24" rx="4" fill="#FFFFFF" stroke="#FC72FF" stroke-width="1.5"></rect><path d="M0 0 L17 12 L34 0" fill="none" stroke="#FC72FF" stroke-width="1.5"></path></g></g>
+<g font-size="11" fill="#7D7D7D">
+<line x1="600" y1="70" x2="600" y2="250" stroke="#131313" stroke-opacity=".25"></line>
+<line x1="594" y1="110" x2="606" y2="110" stroke="#131313" stroke-opacity=".25"></line><text x="590" y="114" text-anchor="end">10K</text>
+<line x1="594" y1="170" x2="606" y2="170" stroke="#131313" stroke-opacity=".25"></line><text x="590" y="174" text-anchor="end">20K</text>
+<line x1="594" y1="230" x2="606" y2="230" stroke="#131313" stroke-opacity=".25"></line><text x="590" y="234" text-anchor="end">30K</text>
+</g>
+<g style="animation: fadeUp .8s ease-out .6s both">
+<line x1="560" y1="199" x2="612" y2="199" stroke="#FC72FF" stroke-width="3"></line>
+<circle class="pop" style="animation-delay: 1s" cx="600" cy="199" r="5" fill="#FC72FF"></circle>
+<text x="556" y="203" text-anchor="end" font-size="13" font-weight="600" fill="#131313">24.8K deep</text>
+</g>
+<text x="24" y="34" font-size="13" fill="#131313" font-weight="535">Surface price $1.04</text>
+<text x="24" y="250" font-size="12" fill="#7D7D7D">Every envelope is a sealed, funded order</text>
+</svg>
+</div>
+<div style="display: flex; flex-direction: column; gap: 4px">
+<span style="color: #7D7D7D; font-size: 14px">Auction #142 · USTRY / USDC</span>
+<span style="font-size: 36px; font-weight: 485">$1.04 <span style="font-size: 16px; color: #7D7D7D">last clearing</span></span>
+</div>
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px">
+<div style="background: #F9F9F9; border-radius: 16px; padding: 14px"><div style="color: #7D7D7D; font-size: 13px">Haircut vs NAV</div><div style="font-size: 20px; font-weight: 535">1.9%</div></div>
+<div style="background: #F9F9F9; border-radius: 16px; padding: 14px"><div style="color: #7D7D7D; font-size: 13px">Depth</div><div style="font-size: 20px; font-weight: 535">24.8K</div></div>
+<div style="background: #F9F9F9; border-radius: 16px; padding: 14px"><div style="color: #7D7D7D; font-size: 13px">Sealed orders</div><div style="font-size: 20px; font-weight: 535">{{count}}</div></div>
+</div>
+<div style="border: 1px solid #F0F0F0; border-radius: 20px; overflow: hidden">
+<sc-for list="{{orders}}" as="o" hint-placeholder-count="6">
+<div style="{{o.rowStyle}}">
+<span style="width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #FFD6FF, #FC72FF)"></span>
+<span style="font-weight: 535">Sealed order</span>
+<span style="flex: 1; height: 10px; border-radius: 5px; background: repeating-linear-gradient(90deg, #EFEFEF 0 14px, #F7F7F7 14px 20px)"></span>
+<span style="color: #7D7D7D; font-size: 14px">{{o.time}}</span>
+<span style="color: #40B66B; font-size: 13px; background: #EEF9F1; border-radius: 12px; padding: 4px 8px">proof ✓</span>
+</div>
+</sc-for>
+</div>
+</section>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":980}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { side: 'buy', sealed: false }; }
+  renderVals() {
+    const on = 'background: #F9F9F9; color: #131313; border: none; border-radius: 20px; padding: 8px 14px; font-size: 16px; font-weight: 535; min-height: 40px; font-family: inherit; cursor: pointer';
+    const off = 'background: transparent; color: #7D7D7D; border: none; border-radius: 20px; padding: 8px 14px; font-size: 16px; font-weight: 485; min-height: 40px; font-family: inherit; cursor: pointer';
+    const buy = this.state.side === 'buy';
+    return {
+      buyStyle: buy ? on : off,
+      sellStyle: buy ? off : on,
+      pickBuy: () => this.setState({ side: 'buy' }),
+      pickSell: () => this.setState({ side: 'sell' }),
+      youLabel: buy ? 'You buy' : 'You sell',
+      limitLabel: buy ? 'Max price $1.040 · NAV $1.06' : 'Min price $1.020 · NAV $1.06',
+      lockAmt: buy ? '31,200' : '30,000',
+      lockTok: buy ? 'cUSDC' : 'USTRY',
+      seal: () => this.setState({ sealed: !this.state.sealed }),
+      sealLabel: this.state.sealed ? 'Seal another order' : 'Lock & seal order',
+      hintStyle: this.state.sealed ? 'display: none' : 'display: flex; justify-content: space-between; color: #7D7D7D; font-size: 14px; padding: 8px 4px',
+      panelStyle: this.state.sealed ? 'display: flex; flex-direction: column; gap: 12px; background: #F9F9F9; border-radius: 20px; padding: 16px; margin-top: 4px' : 'display: none',
+      orderText: buy ? 'Buy 30,000' : 'Sell 30,000',
+      lockLine: buy ? '31,200 cUSDC locked · amount hidden' : '30,000 USTRY locked · amount hidden',
+      count: this.state.sealed ? '13' : '12',
+      orders: (this.state.sealed ? ['just now'] : []).concat(['15:21','14:55','14:09','13:18','13:02']).map((t, i) => ({
+        time: t,
+        rowStyle: 'display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-bottom: 1px solid #F0F0F0; ' + (t === 'just now' ? 'animation: rowIn 1.6s ease-out 2.2s both' : 'animation: fadeUp .4s ease-out both; animation-delay: ' + (i * 0.08) + 's')
+      })) };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,69 @@
+// Shared testnet helpers. Keys live in the Stellar CLI keystore (~/.config/stellar),
+// never in this repo.
+import { execFileSync } from "node:child_process";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { Asset, BASE_FEE, Horizon, Keypair, Networks, Operation, TransactionBuilder, xdr } from "@stellar/stellar-sdk";
+
+export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
+export const NETWORK = "testnet";
+export const PASSPHRASE = Networks.TESTNET;
+export const HORIZON_URL = "https://horizon-testnet.stellar.org";
+export const RPC_URL = "https://soroban-testnet.stellar.org";
+export const horizon = new Horizon.Server(HORIZON_URL);
+
+const DEPLOYMENTS = resolve(ROOT, "deployments/testnet.json");
+
+export type Deployment = Record<string, string>;
+
+export function readDeployment(): Deployment {
+  return existsSync(DEPLOYMENTS) ? JSON.parse(readFileSync(DEPLOYMENTS, "utf8")) : {};
+}
+
+export function writeDeployment(d: Deployment) {
+  mkdirSync(dirname(DEPLOYMENTS), { recursive: true });
+  writeFileSync(DEPLOYMENTS, JSON.stringify(d, null, 2) + "\n");
+}
+
+/** Run the stellar CLI and return trimmed stdout. */
+export function stellar(...args: string[]): string {
+  return execFileSync("stellar", args, { cwd: ROOT, encoding: "utf8", stdio: ["ignore", "pipe", "inherit"] }).trim();
+}
+
+/** Create (and fund via friendbot) a CLI identity if it does not exist yet. */
+export function ensureIdentity(name: string): Keypair {
+  const known = stellar("keys", "ls").split("\n").map((s) => s.trim());
+  if (!known.includes(name)) {
+    console.log(`  creating identity ${name}`);
+    stellar("keys", "generate", name, "--network", NETWORK, "--fund");
+  }
+  return Keypair.fromSecret(stellar("keys", "secret", name));
+}
+
+async function submit(source: Keypair, ops: xdr.Operation[]) {
+  const account = await horizon.loadAccount(source.publicKey());
+  const builder = new TransactionBuilder(account, { fee: BASE_FEE, networkPassphrase: PASSPHRASE }).setTimeout(60);
+  ops.forEach((op) => builder.addOperation(op));
+  const tx = builder.build();
+  tx.sign(source);
+  return horizon.submitTransaction(tx);
+}
+
+/** Add trustlines for `assets` on `holder`, skipping ones that already exist. */
+export async function ensureTrustlines(holder: Keypair, assets: Asset[]) {
+  const account = await horizon.loadAccount(holder.publicKey());
+  const missing = assets.filter(
+    (a) => !account.balances.some((b) => "asset_code" in b && b.asset_code === a.code && b.asset_issuer === a.issuer),
+  );
+  if (missing.length) await submit(holder, missing.map((asset) => Operation.changeTrust({ asset })));
+}
+
+/** Top up `to` so it holds at least `amount` (decimal string) of `asset`, paid by `from`. */
+export async function topUp(from: Keypair, to: string, asset: Asset, amount: number) {
+  const account = await horizon.loadAccount(to);
+  const line = account.balances.find((b) => "asset_code" in b && b.asset_code === asset.code && b.asset_issuer === asset.issuer);
+  const have = line ? Number(line.balance) : 0;
+  if (have >= amount) return;
+  await submit(from, [Operation.payment({ destination: to, asset, amount: (amount - have).toFixed(7) })]);
+}

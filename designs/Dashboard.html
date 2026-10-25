@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Fathom liquidity dashboard</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;485;535;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#FFFFFF}
+a{color:#FC72FF}a:hover{color:#FC72FF}
+svg *{transform-box:fill-box}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes drawIn{from{stroke-dashoffset:var(--len,800)}to{stroke-dashoffset:0}}
+@keyframes popIn{0%{transform:scale(0);opacity:0}70%{transform:scale(1.15);opacity:1}100%{transform:scale(1);opacity:1}}
+@keyframes ring{0%{transform:scale(.6);opacity:.7}100%{transform:scale(2.4);opacity:0}}
+@keyframes growY{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes growX{from{width:0}}
+@keyframes flapClose{from{transform:scaleY(-1)}to{transform:scaleY(1)}}
+@keyframes slideInto{0%{transform:translateX(0);opacity:1}100%{transform:translateX(120px) scale(.5);opacity:0}}
+@keyframes rowIn{0%{opacity:0;transform:translateY(-12px);background:#FFEFFF}60%{opacity:1;transform:none;background:#FFEFFF}100%{background:#FFFFFF}}
+@keyframes shake{0%,100%{transform:none}20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
+@keyframes spike{0%{transform:scale(1)}40%{transform:scale(1.25)}100%{transform:scale(1)}}
+@keyframes shield{0%{box-shadow:0 0 0 0 rgba(64,182,107,.45)}100%{box-shadow:0 0 0 18px rgba(64,182,107,0)}}
+@keyframes livePulse{0%{box-shadow:0 0 0 0 rgba(252,114,255,.6)}100%{box-shadow:0 0 0 10px rgba(252,114,255,0)}}
+.draw{stroke-dasharray:var(--len,800);animation:drawIn 1.6s ease-out .3s both}
+.pop{transform-origin:center;animation:popIn .5s ease-out both}
+.ring{transform-origin:center;animation:ring 2s ease-out infinite}
+.fade{animation:fadeUp .5s ease-out both}
+.live{display:inline-block;width:8px;height:8px;border-radius:50%;background:#FC72FF;animation:livePulse 1.6s ease-out infinite}
+@keyframes gauge{from{stroke-dasharray:0 591}}
+.bars rect{transform-origin:50% 100%;animation:growY .7s ease-out both}
+.bars rect:nth-child(2){animation-delay:.1s}.bars rect:nth-child(3){animation-delay:.2s}.bars rect:nth-child(4){animation-delay:.3s}.bars rect:nth-child(5){animation-delay:.4s}.bars rect:nth-child(6){animation-delay:.5s}.bars rect:nth-child(7){animation-delay:.6s}
+@media (prefers-reduced-motion: reduce){*{animation:none !important;transition:none !important}}
+</style>
+</helmet>
+<div style="min-height: 1080px; background: radial-gradient(900px 500px at 50% -10%, #FFEFFF 0%, #FFFFFF 70%); color: #131313; font-family: Inter, system-ui, sans-serif; box-sizing: border-box">
+<header style="padding: 16px 24px; display: flex; flex-wrap: wrap; align-items: center; gap: 24px">
+<div style="display: flex; align-items: center; gap: 10px">
+<svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="#FC72FF" stroke-width="2" aria-hidden="true"><circle cx="14" cy="14" r="3" fill="#FC72FF"></circle><circle cx="14" cy="14" r="7.5" opacity="0.6"></circle><circle cx="14" cy="14" r="12" opacity="0.3"></circle></svg>
+<span style="font-size: 20px; font-weight: 600; color: #FC72FF">Fathom</span>
+</div>
+<nav aria-label="Main" style="display: flex; gap: 4px; flex-wrap: wrap">
+<a href="Main.dc.html" style="color: #7D7D7D; text-decoration: none; padding: 10px 14px; border-radius: 8px; font-size: 14px">Auction</a>
+<a href="Dashboard.dc.html" style="color: #131313; text-decoration: none; padding: 10px 14px; border-radius: 8px; background: #FFEFFF; font-size: 14px; font-weight: 500">Liquidity</a>
+<a href="Replay.dc.html" style="color: #7D7D7D; text-decoration: none; padding: 10px 14px; border-radius: 8px; font-size: 14px">Attack replay</a>
+<a href="Explainer.dc.html" style="color: #7D7D7D; text-decoration: none; padding: 10px 14px; border-radius: 8px; font-size: 14px">How it works</a>
+</nav>
+<span style="margin-left: auto; font-size: 12px; color: #7D7D7D; border: 1px solid #F0F0F0; border-radius: 999px; padding: 6px 12px">Stellar testnet</span>
+</header>
+
+<main style="max-width: 1360px; margin: 0 auto; padding: 32px; display: flex; flex-direction: column; gap: 24px">
+<section style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 13px; color: #7D7D7D; letter-spacing: 0.08em; text-transform: uppercase; display: flex; align-items: center; gap: 8px"><span class="live" aria-hidden="true"></span>Published on-chain · SEP-40 feed · live</span>
+<h1 style="margin: 0; font-size: 34px; font-weight: 600">How much can really be sold, and at what price</h1>
+</section>
+
+<div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: stretch">
+<section aria-label="USTRY liquidity" style="flex: 999 1 620px; min-width: 0; background: #F9F9F9; border: 1px solid #F0F0F0; border-radius: 20px; padding: 24px; display: flex; flex-wrap: wrap; gap: 32px; align-items: center">
+<svg viewBox="0 0 240 240" role="img" aria-label="Depth gauge: 24,800 USTRY of buy orders within 5% of NAV" style="width: 240px; max-width: 100%; height: auto; flex: 0 0 auto">
+<circle cx="120" cy="120" r="108" fill="none" stroke="#F5F5F5" stroke-width="1"></circle>
+<circle cx="120" cy="120" r="78" fill="none" stroke="#F5F5F5" stroke-width="1"></circle>
+<circle cx="120" cy="120" r="48" fill="none" stroke="#F5F5F5" stroke-width="1"></circle>
+<circle cx="120" cy="120" r="94" fill="none" stroke="#F0F0F0" stroke-width="14"></circle>
+<circle cx="120" cy="120" r="94" fill="none" stroke="#FC72FF" stroke-width="14" stroke-linecap="round" stroke-dasharray="425 591" transform="rotate(-90 120 120)" style="animation: gauge 1.8s ease-out both"></circle>
+<circle class="ring" cx="120" cy="120" r="48" fill="none" stroke="#FC72FF" stroke-width="1.5"></circle>
+<text x="120" y="114" text-anchor="middle" font-family="Inter, sans-serif" font-size="30" fill="#FC72FF">24,800</text>
+<text x="120" y="140" text-anchor="middle" font-family="Inter, sans-serif" font-size="13" fill="#7D7D7D">USTRY depth</text>
+</svg>
+<div style="flex: 1 1 320px; display: flex; flex-direction: column; gap: 18px">
+<div style="display: flex; align-items: center; gap: 10px">
+<span style="font-size: 22px; font-weight: 600">USTRY</span>
+<span style="font-size: 13px; color: #7D7D7D">Etherfuse US Treasury token</span>
+<span style="margin-left: auto; font-size: 12px; color: #40B66B; border: 1px solid #BFE5CF; background: #EEF9F1; border-radius: 999px; padding: 4px 10px">Healthy</span>
+</div>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px">
+<div style="display: flex; flex-direction: column; gap: 4px"><span style="font-size: 12px; color: #7D7D7D">Price (7-auction median)</span><span style="font-variant-numeric: tabular-nums; font-size: 24px">$1.04</span></div>
+<div style="display: flex; flex-direction: column; gap: 4px"><span style="font-size: 12px; color: #7D7D7D">Haircut vs NAV $1.06</span><span style="font-variant-numeric: tabular-nums; font-size: 24px">1.9%</span></div>
+<div style="display: flex; flex-direction: column; gap: 4px"><span style="font-size: 12px; color: #7D7D7D">Standing buy orders</span><span style="font-variant-numeric: tabular-nums; font-size: 24px">9</span></div>
+<div style="display: flex; flex-direction: column; gap: 4px"><span style="font-size: 12px; color: #7D7D7D">Lowest depth, 4 weeks</span><span style="font-variant-numeric: tabular-nums; font-size: 24px">24,800</span></div>
+</div>
+<p style="margin: 0; font-size: 13px; color: #7D7D7D">Depth counts locked 7-day buy orders priced at most 5% below NAV. Selling to yourself uses them up, so it can only lower this number.</p>
+</div>
+</section>
+
+<section aria-label="Who reads Fathom" style="flex: 1 1 340px; background: #F9F9F9; border: 1px solid #F0F0F0; border-radius: 20px; padding: 24px; display: flex; flex-direction: column; gap: 18px">
+<h2 style="margin: 0; font-size: 18px; font-weight: 600">Who reads Fathom</h2>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; justify-content: space-between; font-size: 14px"><span>Pool B · USTRY borrow cap</span><span style="font-variant-numeric: tabular-nums">12,400 / 12,400</span></div>
+<div style="height: 8px; border-radius: 4px; background: #F0F0F0; overflow: hidden"><div style="height: 100%; width: 100%; background: #B7791F; animation: growX 1.4s ease-out .4s both"></div></div>
+<span style="font-size: 12px; color: #7D7D7D">Cap = 50% of lowest depth. Full: new USTRY loans wait for more depth.</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px; border-top: 1px solid #F0F0F0; padding-top: 16px">
+<span style="font-size: 14px">New Blend pool</span>
+<code style="font-variant-numeric: tabular-nums; font-size: 13px; color: #FC72FF; background: #FFFFFF; border: 1px solid #F0F0F0; border-radius: 8px; padding: 10px 12px">lastprice(USTRY) → $1.04</code>
+<span style="font-size: 12px; color: #7D7D7D">Standard SEP-40 call. No code change in the pool.</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px; border-top: 1px solid #F0F0F0; padding-top: 16px">
+<span style="font-size: 14px">DEX router</span>
+<span style="font-size: 12px; color: #7D7D7D">Flags trades priced far from the Fathom median.</span>
+</div>
+</section>
+</div>
+
+<section aria-label="Seven-day history" style="background: #F9F9F9; border: 1px solid #F0F0F0; border-radius: 20px; padding: 24px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; flex-wrap: wrap; align-items: baseline; gap: 16px">
+<h2 style="margin: 0; font-size: 18px; font-weight: 600">Last 7 auctions</h2>
+<span style="font-size: 13px; color: #7D7D7D">Clearing price stays under NAV; depth bars from standing orders</span>
+</div>
+<svg viewBox="0 0 1240 220" role="img" aria-label="Seven auctions: clearing price between $1.03 and $1.05 under a NAV line at $1.06; depth between 24,800 and 31,000 USTRY" style="width: 100%; height: auto">
+<line x1="40" y1="40" x2="1220" y2="40" stroke="#7D7D7D" stroke-dasharray="6 6"></line>
+<text x="1220" y="30" text-anchor="end" font-family="Inter, sans-serif" font-size="12" fill="#7D7D7D">NAV $1.06</text>
+<g class="bars" fill="#FFD6FF">
+<rect x="90" y="120" width="60" height="90"></rect>
+<rect x="260" y="112" width="60" height="98"></rect>
+<rect x="430" y="104" width="60" height="106"></rect>
+<rect x="600" y="128" width="60" height="82"></rect>
+<rect x="770" y="116" width="60" height="94"></rect>
+<rect x="940" y="108" width="60" height="102"></rect>
+<rect x="1110" y="124" width="60" height="86"></rect>
+</g>
+<polyline class="draw" style="--len: 1100; animation-delay: .7s" points="120,72 290,64 460,56 630,80 800,72 970,64 1140,72" fill="none" stroke="#FC72FF" stroke-width="3"></polyline>
+<g fill="#FC72FF">
+<circle cx="120" cy="72" r="4"></circle><circle cx="290" cy="64" r="4"></circle><circle cx="460" cy="56" r="4"></circle><circle cx="630" cy="80" r="4"></circle><circle cx="800" cy="72" r="4"></circle><circle cx="970" cy="64" r="4"></circle><circle cx="1140" cy="72" r="5"></circle>
+</g>
+<g font-family="Inter, sans-serif" font-size="12" fill="#7D7D7D" text-anchor="middle">
+<text x="120" y="216">#135</text><text x="290" y="216">#136</text><text x="460" y="216">#137</text><text x="630" y="216">#138</text><text x="800" y="216">#139</text><text x="970" y="216">#140</text><text x="1140" y="216">#141</text>
+</g>
+</svg>
+</section>
+
+<section aria-label="Other assets" style="display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px">
+<h2 style="margin: 0; font-size: 18px; font-weight: 600">Other assets</h2>
+<span style="font-size: 12px; color: #B7791F">Simulated testnet data</span>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 16px">
+<sc-for list="{{assets}}" as="a" hint-placeholder-count="3">
+<div style="flex: 1 1 260px; background: #F9F9F9; border: 1px solid #F0F0F0; border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; align-items: center; gap: 8px"><span style="width: 10px; height: 10px; border-radius: 50%; background: {{a.color}}"></span><span style="font-weight: 600">{{a.name}}</span><span style="margin-left: auto; font-size: 12px; color: #7D7D7D">{{a.status}}</span></div>
+<div style="display: flex; justify-content: space-between; font-variant-numeric: tabular-nums; font-size: 14px"><span>{{a.price}}</span><span>depth {{a.depth}}</span></div>
+</div>
+</sc-for>
+</div>
+</section>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1080}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      assets: [
+        { name: 'CETES', color: '#40B66B', status: 'Healthy', price: '$0.0571 · 0.8% cut', depth: '410,000' },
+        { name: 'Gold token', color: '#B7791F', status: 'Thin · few orders', price: '$2,310 · 3.4% cut', depth: '6.2' },
+        { name: 'Invoice pool', color: '#E5484D', status: 'Below minimum', price: 'No price published', depth: '< $10k' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>
