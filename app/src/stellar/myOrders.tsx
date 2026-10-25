@@ -4,7 +4,8 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { IDS, expertTx } from "../config";
 import { ledgerNow, onEvents } from "./events";
 import { AUCTION_ERRORS, contractErrorCode, read, send } from "./client";
-import { commitment, hexBytes, newSalt, saltBytes } from "./commitment";
+import { commitment, hexBytes, newSalt, ownerField, saltBytes } from "./commitment";
+import { prove } from "../zk/prover";
 import { loadOpenings, patchOpening, saveOpening, type StoredOpening } from "./openings";
 import { useWallet } from "./wallet";
 
@@ -22,12 +23,15 @@ export interface SealRequest {
   qty: bigint;
   deposit: bigint;
   standing: boolean;
+  /** Price grid (base units) for the proof's public inputs. */
+  grid: { min: bigint; tick: bigint; ticks: number };
 }
 
 export type SealProgress =
   | { step: "sealing" }
   | { step: "sealed"; fingerprint: string }
-  | { step: "locked"; fingerprint: string; link: string; orderId: string }
+  | { step: "proved"; fingerprint: string; proofMs: number }
+  | { step: "locked"; fingerprint: string; link: string; orderId: string; proofMs: number }
   | { step: "error"; fingerprint?: string; error: string };
 
 interface Ctx {
@@ -143,13 +147,31 @@ export function MyOrdersProvider({ children }: { children: ReactNode }) {
       return;
     }
     onProgress({ step: "sealed", fingerprint });
+    // Zero-knowledge proof that the order is on the grid and funded, made and checked in this
+    // browser. Not posted on-chain (Soroban's verifier only takes non-ZK proofs). If it fails,
+    // nothing is sent.
+    let proofMs = 0;
+    try {
+      const p = await prove({
+        side: String(r.side), price_tick: String(r.priceTick), qty: r.qty.toString(), salt: `0x${salt.toString(16)}`,
+        commitment: `0x${c}`, owner: `0x${(await ownerField(address)).toString(16)}`, deposit: r.deposit.toString(),
+        grid_min: r.grid.min.toString(), tick_size: r.grid.tick.toString(), n_ticks: String(r.grid.ticks),
+      }, "private");
+      if (!p.verified) throw new Error("The proof did not verify");
+      proofMs = p.ms;
+      onProgress({ step: "proved", fingerprint, proofMs });
+    } catch (e) {
+      setStored(patchOpening(address, c, { state: "failed", error: message(e) }));
+      onProgress({ step: "error", fingerprint, error: `Not sent: ${message(e)}` });
+      return;
+    }
     try {
       const { value: id, hash } = await send<bigint>(IDS.auction, "place_order", {
         owner: address, commitment: hexBytes(c), deposit_token: r.side === 0 ? IDS.usdc : IDS.ustry, deposit_amount: r.deposit, standing: r.standing,
       }, signer, { writeSlack: 512 });
       const placed = await read<RawOrder>(IDS.auction, "order", { id });
       setStored(patchOpening(address, c, { state: "sealed", orderId: id.toString(), auction: placed.auction.toString(), placeTx: hash }));
-      onProgress({ step: "locked", fingerprint, link: expertTx(hash), orderId: id.toString() });
+      onProgress({ step: "locked", fingerprint, link: expertTx(hash), orderId: id.toString(), proofMs });
     } catch (e) {
       setStored(patchOpening(address, c, { state: "failed", error: message(e) }));
       onProgress({ step: "error", fingerprint, error: message(e) });

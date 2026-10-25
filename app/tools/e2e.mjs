@@ -72,6 +72,8 @@ try {
   await page.locator("#limit").fill("1.040");
   await page.getByRole("button", { name: "Lock & seal order" }).click();
   await page.waitForFunction(() => /USDC locked/.test(document.body.innerText) || /Not placed|failed/.test(document.body.innerText), null, { timeout: 120_000 });
+  const proofLine = await page.locator("li", { hasText: "Zero-knowledge proof" }).first().innerText().catch(() => "");
+  log(`proof: ${proofLine.replace(/\s+/g, " ").slice(0, 120)}`);
   await page.waitForTimeout(3000); // let the placed event slide the row in
   await shot("1-sealed");
   await collect("seal");
@@ -105,6 +107,15 @@ try {
   await page.waitForTimeout(2000);
   await shot("5-replay");
   await collect("replay");
+
+  log("verifier demo (dummy order, on-chain)");
+  await page.getByRole("link", { name: "How it works" }).click();
+  await page.getByRole("button", { name: /Prove the dummy order and verify on Stellar/ }).click();
+  await page.waitForFunction(() => /Verified by the Soroban contract/.test(document.querySelector('[aria-label="Verifier demo"]')?.textContent ?? "") || document.querySelector('[aria-label="Verifier demo"] [role="alert"]'), null, { timeout: 180_000 });
+  const v = await page.locator('[aria-label="Verifier demo"]').innerText();
+  log(`verifier: ${v.split("\n").slice(-1)[0]}`);
+  await page.locator('[aria-label="Verifier demo"]').screenshot({ path: `${OUT}e2e-6-verifier.png` });
+  await collect("verifier demo");
 } catch (e) {
   errors.push(`run stopped: ${e.message}`);
   await shot("error").catch(() => {});

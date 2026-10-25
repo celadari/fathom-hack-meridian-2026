@@ -69,7 +69,7 @@ function AuctionRoom({ a }: { a: AuctionView }) {
   const lockTok = buy ? a.quote : a.base;
   const isStanding = buy && standing;
   const balance = account.status?.balances[buy ? "USDC" : "USTRY"] ?? 0;
-  const busy = progress?.p.step === "sealing" || progress?.p.step === "sealed";
+  const busy = progress?.p.step === "sealing" || progress?.p.step === "sealed" || progress?.p.step === "proved";
 
   // What blocks sealing, in the order the user can fix it.
   let block: string | null = null;
@@ -87,7 +87,7 @@ function AuctionRoom({ a }: { a: AuctionView }) {
     if (source === "mock") {
       if (progress) return setProgress(null);
       const text = `${buy ? "Buy" : "Sell"} ${fmtInt(qty)}`;
-      return setProgress({ text, lock: `${fmtInt(deposit ?? 0)} ${lockTok} locked${isStanding ? ` for ${a.standingDays} days` : ""} · price and quantity hidden`, p: { step: "locked", fingerprint: "0x1f9a…c3e2", link: "#", orderId: "mock" } });
+      return setProgress({ text, lock: `${fmtInt(deposit ?? 0)} ${lockTok} locked${isStanding ? ` for ${a.standingDays} days` : ""} · price and quantity hidden`, p: { step: "locked", fingerprint: "0x1f9a…c3e2", link: "#", orderId: "mock", proofMs: 1800 } });
     }
     if (!wallet.address) return void wallet.connect(DEMO && wallet.freighterInstalled === false ? "burner" : "freighter");
     if (progress && !busy) return setProgress(null);
@@ -96,7 +96,10 @@ function AuctionRoom({ a }: { a: AuctionView }) {
     const lock = `${fmtInt(deposit)} ${lockTok} locked${isStanding ? ` for ${a.standingDays} days` : ""} · price and quantity hidden`;
     setProgress({ text, lock, p: { step: "sealing" } });
     void seal(
-      { side: buy ? 0 : 1, priceTick: tick, qty: BigInt(Math.round(qty)) * UNIT, deposit: BigInt(deposit) * UNIT, standing: isStanding },
+      {
+        side: buy ? 0 : 1, priceTick: tick, qty: BigInt(Math.round(qty)) * UNIT, deposit: BigInt(deposit) * UNIT, standing: isStanding,
+        grid: { min: BigInt(Math.round(a.grid.min * 1e7)), tick: BigInt(Math.round(a.grid.tick * 1e7)), ticks: a.grid.ticks },
+      },
       (p) => setProgress({ text, lock, p }),
     );
   };
@@ -105,6 +108,7 @@ function AuctionRoom({ a }: { a: AuctionView }) {
   const p = progress?.p;
   const fingerprint = p && "fingerprint" in p ? p.fingerprint : null;
   const locked = p?.step === "locked";
+  const proofMs = p && "proofMs" in p ? p.proofMs : null;
 
   const rows = a.sealed.map((o, i) => ({
     key: o.id,
@@ -174,7 +178,11 @@ function AuctionRoom({ a }: { a: AuctionView }) {
                 <path d="M0 14 L50 50 L100 14" fill="#FFEFFF" stroke="#FC72FF" strokeWidth="2" style={{ transformOrigin: "50% 0%", animation: "flapClose .4s ease-out 1s both" }} />
                 {locked && <g className="pop"><rect x="40" y="50" width="20" height="16" rx="3" fill="#FC72FF" /><path d="M44 50 v-5 a6 6 0 0 1 12 0 v5" fill="none" stroke="#FC72FF" strokeWidth="2.5" /></g>}
               </g>
-              <g transform="translate(330 22)"><circle cx="40" cy="40" r="34" fill="none" stroke="#D9D9D9" strokeWidth="2" strokeDasharray="4 6" /><text x="40" y="45" textAnchor="middle" fontSize="13" fill="#B5B5B5">ZK</text></g>
+              {proofMs !== null ? (
+                <g className="pop" transform="translate(330 22)"><circle cx="40" cy="40" r="34" fill="#EEF9F1" /><path d="M24 41 l10 10 l22 -22" fill="none" stroke="#40B66B" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" /></g>
+              ) : (
+                <g transform="translate(330 22)"><circle cx="40" cy="40" r="34" fill="none" stroke="#D9D9D9" strokeWidth="2" strokeDasharray="4 6" /><text x="40" y="45" textAnchor="middle" fontSize="13" fill="#B5B5B5">ZK</text></g>
+              )}
             </svg>
             <ol style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: "8px", fontSize: "14px" }}>
               <li className="fade" style={{ display: "flex", gap: "8px" }}>
@@ -182,13 +190,20 @@ function AuctionRoom({ a }: { a: AuctionView }) {
                 {fingerprint ? `Sealed in your browser · fingerprint ${fingerprint}` : "Sealing in your browser…"}
               </li>
               <li className="fade" style={{ display: "flex", gap: "8px" }}>
+                <span style={{ color: proofMs !== null ? "#40B66B" : "#B5B5B5" }}>{proofMs !== null ? "✓" : "…"}</span>
+                <span>
+                  {proofMs !== null
+                    ? `Zero-knowledge proof made and checked in your browser (${(proofMs / 1000).toFixed(1)} s): on the grid and paid for. Not posted on-chain: Soroban's verifier only takes non-ZK proofs today, so the contract also checks funding at reveal.`
+                    : fingerprint && p?.step !== "error" ? "Proving in your browser that the order is valid and paid for…" : "Not proven"}
+                </span>
+              </li>
+              <li className="fade" style={{ display: "flex", gap: "8px" }}>
                 <span style={{ color: locked ? "#40B66B" : "#B5B5B5" }}>{locked ? "✓" : "…"}</span>
                 <span>
-                  {locked ? progress.lock : fingerprint && p?.step !== "error" ? "Locking funds on Stellar…" : "Funds not locked yet"}
+                  {locked ? progress.lock : proofMs !== null && p?.step !== "error" ? "Locking funds on Stellar…" : "Funds not locked yet"}
                   {p?.step === "locked" && <> · <a href={p.link} target="_blank" rel="noreferrer" style={{ color: "#FC72FF" }}>stellar.expert</a></>}
                 </span>
               </li>
-              <li style={{ display: "flex", gap: "8px", color: "#7D7D7D" }}><span style={{ color: "#B5B5B5" }}>·</span>Funding checked at reveal. Private on-chain proof needs Soroban's zero-knowledge verifier (not live yet).</li>
             </ol>
             {p?.step === "error" && <span role="alert" style={{ fontSize: "13px", color: "#D93A3A" }}>{p.error}</span>}
           </div>

@@ -45,6 +45,8 @@ export async function read<T>(id: string, method: string, args?: object): Promis
 export interface SendOptions {
   /** Extra declared write bytes, for calls that append to a shared list (place_order). */
   writeSlack?: number;
+  /** Record a read-only call on-chain anyway (the verifier demo). */
+  force?: boolean;
   onRetry?: (failedHash: string, attempt: number) => void;
 }
 
@@ -53,7 +55,7 @@ export async function send<T>(id: string, method: string, args: object, signer: 
     const tx = await (await client(id, signer))[method](args);
     if (opts.writeSlack) addWriteSlack(tx, opts.writeSlack);
     return tx as Sendable<T>;
-  }, { onRetry: opts.onRetry });
+  }, { onRetry: opts.onRetry, force: opts.force });
 }
 
 /**

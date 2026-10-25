@@ -3,6 +3,8 @@
 // browser; step 2 describes fixed-size deposits instead of a confidential token;
 // the attacker is referred to neutrally.
 import { Header, Page } from "../components/Header";
+import { VERIFIER_DEMO } from "../config";
+import { VerifierDemo } from "../zk/VerifierDemo";
 import { useFathom } from "../data/useFathom";
 import { fmtK } from "../lib/format";
 
@@ -102,6 +104,7 @@ export function HowItWorks() {
       </svg>
       <div style={{ flex: '1 1 320px', display: 'flex', flexDirection: 'column', gap: '6px' }}><span style={{ color: '#FC72FF', fontWeight: '600' }}>Why you can't fake depth</span><span style={{ fontSize: '17px', fontWeight: '535' }}>Depth only counts buy orders locked for {days ? `${days} days` : "several days"}.</span><span style={{ color: '#7D7D7D', fontSize: '14px' }}>If someone sells into their own order, that order is filled and leaves the book. Self-trading can only make depth smaller, never bigger.</span></div>
       </section>
+        {VERIFIER_DEMO && <VerifierDemo />}
       </main>
     </Page>
   );

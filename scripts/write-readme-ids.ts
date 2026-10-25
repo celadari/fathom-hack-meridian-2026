@@ -15,6 +15,7 @@ const rows = [
   ["mock-dex-price", d.mock_dex_price, "thin DEX last price, demo feed"],
   ["USTRY (SAC)", d.ustry_sac, "demo token"],
   ["USDC (SAC)", d.usdc_sac, "demo token"],
+  ["order verifier", d.order_verifier, "rs-soroban-ultrahonk with circuits/order's vk (verifier demo)"],
   ["issuer", d.issuer, "issues the demo tokens"],
 ];
 const table = ["| Contract | ID | Role |", "|---|---|---|", ...rows.map(([n, id, r]) => `| ${n} | ${link(id)} | ${r} |`)].join("\n");

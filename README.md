@@ -66,6 +66,7 @@ flowchart LR
 | mock-dex-price | [`CCKQ7A3LPDOC75PCWMIIVG6YBUUFZSJEGTFOHYTHNFPTBGTBVRFMMHQ4`](https://stellar.expert/explorer/testnet/contract/CCKQ7A3LPDOC75PCWMIIVG6YBUUFZSJEGTFOHYTHNFPTBGTBVRFMMHQ4) | thin DEX last price, demo feed |
 | USTRY (SAC) | [`CBMXMNLBQVECQ2G7USMEUIB6QLBEXEJF5M4BK4LGG53PYPJCTY5FPJWV`](https://stellar.expert/explorer/testnet/contract/CBMXMNLBQVECQ2G7USMEUIB6QLBEXEJF5M4BK4LGG53PYPJCTY5FPJWV) | demo token |
 | USDC (SAC) | [`CBDCVIPPYUN5JZ5FHLXADKE34OHXXHPPBWUROJ53BGGAZLTQ5KCESXE2`](https://stellar.expert/explorer/testnet/contract/CBDCVIPPYUN5JZ5FHLXADKE34OHXXHPPBWUROJ53BGGAZLTQ5KCESXE2) | demo token |
+| order verifier | [`CCFQPYDC7JKJPEIR6PQLT2VF4U2GRYGIK5QCNEUTRUVBGU6L63GRKFTA`](https://stellar.expert/explorer/testnet/contract/CCFQPYDC7JKJPEIR6PQLT2VF4U2GRYGIK5QCNEUTRUVBGU6L63GRKFTA) | rs-soroban-ultrahonk with circuits/order's vk (verifier demo) |
 | issuer | [`GDSK6TCBLJJBAK4KG5BHKTSOZTMIONTJAOCTSHZM6U55M7J4S3OQB3SF`](https://stellar.expert/explorer/testnet/account/GDSK6TCBLJJBAK4KG5BHKTSOZTMIONTJAOCTSHZM6U55M7J4S3OQB3SF) | issues the demo tokens |
 <!-- contract-ids:end -->
 
@@ -80,7 +81,10 @@ npm run deploy                              # idempotent; writes deployments/tes
 # 2. Demo server (keys from the Stellar CLI keystore, 127.0.0.1 only, no token)
 npm run demo-server -- --loop               # --loop: reveal bots, close auctions, seed, continuously
 
-# 3. App
+# 3. Circuit (nargo 1.0.0-beta.9, bb 0.87.0): test, prove the example, write the vk
+../circuits/build.sh
+
+# 4. App
 cd ../app && npm install && npm run dev      # http://localhost:5173  (add ?demo for the demo bar)
 ```
 
@@ -102,10 +106,14 @@ Other scripts: `npm run worked-example` (the worked example as a real auction), 
 - **Visible on-chain:** each order's **side** (USDC deposit = buy, USTRY = sell) and **deposit size** (one
   of three fixed sizes). Price and quantity are hidden until the close. Confidential token deposits would
   hide size and side; not in this build.
-- **Zero-knowledge proof is off-chain.** The only Soroban UltraHonk verifier available
-  ([rs-soroban-ultrahonk](https://github.com/NethermindEth/rs-soroban-ultrahonk)) verifies *non*-ZK proofs,
-  which would leak the order if posted on-chain. Real orders never post a proof; funding is checked by the
-  contract at reveal.
+- **Zero-knowledge proof is checked in the browser, not on-chain.** Each order gets a zero-knowledge
+  UltraHonk proof (`circuits/order`, Noir 1.0.0-beta.9, bb.js 0.87.0, ~1.2 s in a Web Worker) that it is on
+  the price grid and funded; it is verified in the browser before the order is sent, and never posted. The
+  only Soroban verifier available ([rs-soroban-ultrahonk](https://github.com/NethermindEth/rs-soroban-ultrahonk))
+  accepts *non*-ZK proofs, which can leak the order. So on-chain verification runs only in the **Verifier
+  demo** panel (`?verifier` or `?demo`, on How it works) for a fixed dummy order: verified on testnet in
+  [f13a8853…](https://stellar.expert/explorer/testnet/tx/f13a88532ec27f35820c29ff52c92bb84d720bb4e7e4387d27250c569701d87a).
+  The contract checks funding again at reveal.
 - **Demo feeds.** The USTRY NAV ($1.06) comes from `mock-nav` and the DEX price from `mock-dex-price`, both
   set by us and tagged so in the app.
 - **Blend integration goes through the oracle-aggregator.** Blend pools read prices through an

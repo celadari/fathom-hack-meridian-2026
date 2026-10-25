@@ -33,6 +33,8 @@ then a read of each screen. Contract names: `auction` = fathom-auction, `oracle`
 | Balance message | you have 0 | Horizon account balances (trustlines) |
 | Seal panel order | Buy 30,000 | user input |
 | Seal panel fingerprint | 0x0139…e4e0 | computed in the browser: Poseidon2 commitment (bb.js) |
+| Seal panel proof line | proof made and checked in your browser (1.2 s) | computed: time of the in-browser proof (bb.js) |
+| Verifier demo | proof 1.1 s, 14,592 bytes; dummy order 30,000 at $1.04, 50,000 deposit | computed (proof time, size); the dummy order is hard-coded and labelled "dummy order only" |
 | Seal panel lock line | 50,000 USDC locked for 7 days | computed deposit + `auction.params().standing_secs`; link = `place_order` tx hash |
 | Hero surface price | Surface price $1.04 | `oracle.liquidity(USTRY).price` when status is Ok (Fathom's published price) |
 | "last clearing" | $1.05 | `auction.last_result().price` (raw last auction, shown only if it cleared) |

@@ -18,6 +18,8 @@ export const IDS = {
   ustry: env.VITE_USTRY_SAC as string,
   usdc: env.VITE_USDC_SAC as string,
   issuer: env.VITE_ISSUER as string,
+  /** NethermindEth/rs-soroban-ultrahonk deployed with circuits/order's verification key. */
+  orderVerifier: env.VITE_ORDER_VERIFIER as string,
 };
 
 /**
@@ -71,6 +73,8 @@ export function setDemoToken(token: string) {
     /* private mode */
   }
 }
+/** ?verifier (or ?demo): show the on-chain verifier demo panel (dummy order only). */
+export const VERIFIER_DEMO = flag("verifier") || DEMO;
 /** ?mock: render mock data (screenshot comparison with the designs). */
 export const MOCK = flag("mock");
 

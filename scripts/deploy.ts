@@ -137,6 +137,7 @@ async function main() {
       `VITE_ORACLE=${d.oracle}`,
       `VITE_POOL_A=${d.pool_a}`,
       `VITE_POOL_B=${d.pool_b}`,
+      `VITE_ORDER_VERIFIER=${d.order_verifier ?? ""}`,
       "# Set by us in scripts/config.ts (shown in the app as demo feed / attack scenario).",
       `VITE_DEX_START=${CONFIG.ustry.dexStart}`,
       `VITE_ATTACK_COLLATERAL=${CONFIG.replay.collateral}`,

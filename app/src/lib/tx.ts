@@ -16,7 +16,7 @@ export interface SentLike<T> {
 
 /** The parts of a stellar-sdk AssembledTransaction this needs. */
 export interface Sendable<T> {
-  signAndSend(): Promise<SentLike<T>>;
+  signAndSend(opts?: { force?: boolean }): Promise<SentLike<T>>;
 }
 
 export class TxError extends Error {
@@ -33,6 +33,8 @@ export interface RetryOptions {
   attempts?: number;
   /** Random wait before a retry, so it does not collide again in the next ledger. */
   backoffMs?: () => number;
+  /** Send even if simulation says the call writes nothing (e.g. to record a verification). */
+  force?: boolean;
   onRetry?: (failedHash: string, attempt: number) => void;
 }
 
@@ -40,9 +42,9 @@ export interface RetryOptions {
  * `build` must re-simulate each time (e.g. `() => client.place_order(args)`), so a
  * retry runs against the new ledger state.
  */
-export async function sendWithRetry<T>(build: () => Promise<Sendable<T>>, { attempts = 4, backoffMs = () => 1000 + Math.random() * 2000, onRetry }: RetryOptions = {}): Promise<{ value: T; hash: string }> {
+export async function sendWithRetry<T>(build: () => Promise<Sendable<T>>, { attempts = 4, backoffMs = () => 1000 + Math.random() * 2000, onRetry, force }: RetryOptions = {}): Promise<{ value: T; hash: string }> {
   for (let i = 1; ; i++) {
-    const sent = await (await build()).signAndSend();
+    const sent = await (await build()).signAndSend(force ? { force } : undefined);
     const hash = sent.sendTransactionResponse?.hash ?? "";
     const status = sent.getTransactionResponse?.status;
     if (status === "SUCCESS") return { value: unwrap(sent.result), hash };

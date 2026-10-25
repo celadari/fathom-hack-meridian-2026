@@ -28,3 +28,7 @@ seed bots, seal an order, Next auction (auto-reveal, close, settle), results, da
 | Attacker pumps the DEX to $106 | [acbd2d28e8…](https://stellar.expert/explorer/testnet/tx/acbd2d28e835c4607b3507429841042b47f559211551ccdd3c77812fc514e1b9) |
 | Pool A lends $1M (drained) | [d7daffd015…](https://stellar.expert/explorer/testnet/tx/d7daffd01518055ab17a407a2b2f96eb49becd5455afd51a3cf60a3197aa3bd6) |
 | Pool B rejects, recorded on-chain (`borrow_rejected`) | [ac4aff834c…](https://stellar.expert/explorer/testnet/tx/ac4aff834ca581b13ed3de967efc3c5a73485fa0293a25414d8714f1e8e00b7c) |
+
+Verifier demo (dummy order, browser-generated non-ZK proof, verified by rs-soroban-ultrahonk on testnet):
+[f13a8853…](https://stellar.expert/explorer/testnet/tx/f13a88532ec27f35820c29ff52c92bb84d720bb4e7e4387d27250c569701d87a).
+CLI-generated proof verified on-chain: [4d3ddd8c…](https://stellar.expert/explorer/testnet/tx/4d3ddd8ce1b46b6f9232302d2bcd517e1a9b9fda917ad4c8820c6612b274c13d).

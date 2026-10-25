@@ -6,6 +6,8 @@ export default defineConfig({
   // bb.js ships wasm and workers; let Vite serve it as-is.
   optimizeDeps: { exclude: ["@aztec/bb.js"] },
   build: { target: "es2022" },
+  // The prover worker imports bb.js and noir_js (wasm, top-level await): bundle it as an ES module.
+  worker: { format: "es" },
   server: {
     port: 5173,
     // The demo server (scripts/demo-server.ts) holds the testnet demo keys.

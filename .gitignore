@@ -12,3 +12,4 @@ circuits/**/target/
 test_snapshots/
 .compare/
 *.tsbuildinfo
+circuits/order/target/
