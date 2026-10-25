@@ -89,7 +89,7 @@ await p.goto(`${APP}/?demo`, { waitUntil: "networkidle" });
 await loaded(p);
 await caption(p, "Fathom: sealed auctions that measure real liquidity", "Stellar testnet · every number is a contract read or labelled");
 await pause(p, 6000);
-await caption(p, "The February 2026 YieldBlox exploit", "One trade on a market with under $1 of hourly volume pushed USTRY ×100; a lending pool lost ~$10.2M");
+await caption(p, "The February 2026 YieldBlox exploit", "One trade on a market with under $1 of hourly volume pushed USTRY ×100; about $10–11M drained from a lending pool");
 await pause(p, 7000);
 await caption(p, "Bots and users place sealed orders", "Only a fingerprint and a fixed-size deposit go on-chain. Price and quantity stay hidden until the close.");
 await pause(p, 7000);

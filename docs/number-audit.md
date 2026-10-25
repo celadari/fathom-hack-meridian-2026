@@ -113,7 +113,7 @@ then a read of each screen. Contract names: `auction` = fathom-auction, `oracle`
 | DEX value in reason | $1,378,000 | computed: scenario collateral × scenario pump |
 | Cap share in reason | 50% | `pool-b.config().cap_share_bps` |
 | Step links | stellar.expert | demo server: hashes of the replay transactions |
-| Footer | $10.2M drained, $7M frozen | hard-coded historical facts, labelled "Real event" |
+| Footer and footnote | about $10–11M drained, about $7M frozen · 22 Feb 2026 | hard-coded historical facts, labelled "Real event", sources Halborn, Protos, Rekt |
 
 ## How it works
 

@@ -113,7 +113,9 @@ Other scripts: `npm run worked-example` (the worked example as a real auction), 
   accepts *non*-ZK proofs, which can leak the order. So on-chain verification runs only in the **Verifier
   demo** panel (`?verifier` or `?demo`, on How it works) for a fixed dummy order: verified on testnet in
   [f13a8853…](https://stellar.expert/explorer/testnet/tx/f13a88532ec27f35820c29ff52c92bb84d720bb4e7e4387d27250c569701d87a).
-  The contract checks funding again at reveal.
+  A tampered proof (one bit of the public deposit flipped) is rejected by the same contract; the panel runs
+  that check as a **simulation** (the contract's verification code on Soroban, labelled as such), because a
+  rejected verification is not recorded on-chain. The contract checks funding again at reveal.
 - **Demo feeds.** The USTRY NAV ($1.06) comes from `mock-nav` and the DEX price from `mock-dex-price`, both
   set by us and tagged so in the app.
 - **Blend integration goes through the oracle-aggregator.** Blend pools read prices through an
@@ -131,14 +133,11 @@ Other scripts: `npm run worked-example` (the worked example as a real auction), 
 ## The real event (February 2026)
 
 The YieldBlox DAO pool on Blend V2 was exploited on 22 February 2026 at 00:25 UTC: one trade on a USTRY
-market with less than $1 of hourly volume moved the price from ~$1.06 to ~$106.74, and the inflated
-collateral was borrowed against.
-
-| Fact | Sources |
-|---|---|
-| About $10.2M drained | [Halborn](https://www.halborn.com/blog/post/explained-the-yieldblox-hack-february-2026) ("approximately $10.2 million"), [Protos](https://protos.com/yieldblox-lending-pool-hit-by-10m-hack-on-stellar/) ("withdrawing $10.2 million"); [Rekt](https://rekt.news/yieldblox-rekt) counts $10.97M |
-| About $7M frozen by Stellar Tier-1 validators | Halborn ($7.2M); Protos (48M XLM ≈ $7.5M) |
-| 22 Feb 2026, 00:25 UTC; < $1 hourly volume; ~$1.06 → ~$106.74 | Rekt; Protos (quoting Script3) |
+market with less than $1 of hourly volume moved the price from about $1.06 to about $106, and the inflated
+collateral was borrowed against. **About $10–11M drained, about $7M frozen** by Stellar Tier-1 validators
+([Halborn](https://www.halborn.com/blog/post/explained-the-yieldblox-hack-february-2026),
+[Protos](https://protos.com/yieldblox-lending-pool-hit-by-10m-hack-on-stellar/),
+[Rekt](https://rekt.news/yieldblox-rekt)). The sources' exact counts differ within that range.
 
 ## Details
 

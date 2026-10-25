@@ -27,7 +27,7 @@ No screen scrolls horizontally at 390 px. Nothing from the designs was dropped.
 
 ## Intentional data changes (every number from contracts or labelled)
 
-- **Replay:** pool TVL $10.2M → $1M (the testnet pools). The footnote keeps the real event's $10.2M.
+- **Replay:** pool TVL $10.2M → $1M (the testnet pools). The footnote gives the real event's figure (about $10–11M drained, about $7M frozen) with sources.
 - **Replay, step 3:** Pool B lists every rejection reason with its numbers (collateral $13,520 at the Fathom price vs $1,378,000 at the DEX price, max loan $10,140; depth cap 12,400 vs 13,000).
 - **Liquidity:** "Lowest depth, 4 weeks" → the oracle's real window ("30 min" in the demo).
 - **Header badge:** shows "Mock data" (amber) until phase 5 wires testnet reads, then "Stellar testnet". How it works gets the badge too while on mock data.

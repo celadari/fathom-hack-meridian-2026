@@ -3,7 +3,7 @@
 // leak the order's price and quantity.
 import { useState, type CSSProperties } from "react";
 import { expertContract, expertTx, IDS } from "../config";
-import { read, send } from "../stellar/client";
+import { contractErrorCode, read, send } from "../stellar/client";
 import { useWallet } from "../stellar/wallet";
 import { publicInputBytes } from "./proveOrder";
 import { prove } from "./prover";
@@ -25,9 +25,31 @@ type State =
 
 const btn: CSSProperties = { background: "#131313", color: "#FFFFFF", border: "none", borderRadius: "12px", padding: "10px 14px", fontSize: "14px", fontWeight: 535, fontFamily: "inherit", cursor: "pointer" };
 
+type Tamper = { s: "idle" } | { s: "running" } | { s: "rejected"; code?: number } | { s: "accepted" } | { s: "error"; error: string };
+
 export function VerifierDemo() {
   const { signer } = useWallet();
   const [st, setSt] = useState<State>({ s: "idle" });
+  const [tamper, setTamper] = useState<Tamper>({ s: "idle" });
+
+  // Same dummy proof, one bit of the public deposit flipped. Run as a simulation: the contract's
+  // real verification code runs on Soroban, but a rejected call is not recorded on-chain.
+  const runTamper = async () => {
+    try {
+      setTamper({ s: "running" });
+      const p = await prove(DUMMY, "onchain");
+      const pub = publicInputBytes(p.publicInputs);
+      pub[2 * 32 + 31] ^= 1; // third public input: the deposit
+      try {
+        await read(IDS.orderVerifier, "verify_proof", { public_inputs: pub, proof_bytes: p.proof });
+        setTamper({ s: "accepted" });
+      } catch (e) {
+        setTamper({ s: "rejected", code: contractErrorCode(e) });
+      }
+    } catch (e) {
+      setTamper({ s: "error", error: e instanceof Error ? e.message.slice(0, 200) : String(e) });
+    }
+  };
   const run = async () => {
     try {
       setSt({ s: "proving" });
@@ -71,6 +93,16 @@ export function VerifierDemo() {
           </span>
         )}
         {st.s === "error" && <span role="alert" style={{ color: "#D93A3A" }}>{st.error}</span>}
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", fontSize: "13px" }}>
+        <button type="button" onClick={() => void runTamper()} disabled={tamper.s === "running"} style={{ ...btn, background: "#FFFFFF", color: "#131313", border: "1px solid #F0F0F0", opacity: tamper.s === "running" ? 0.6 : 1 }}>
+          Try a tampered proof
+        </button>
+        <span style={{ fontSize: "11px", color: "#B7791F", border: "1px solid #F0D9A8", background: "#FFF6E0", borderRadius: "999px", padding: "1px 6px" }}>simulation, not recorded on-chain</span>
+        {tamper.s === "running" && <span aria-live="polite" style={{ color: "#7D7D7D" }}>Proving, flipping one bit of the deposit, asking the contract…</span>}
+        {tamper.s === "rejected" && <span aria-live="polite" style={{ color: "#40B66B" }}>✓ Rejected by the Soroban contract{tamper.code ? ` (Error #${tamper.code})` : ""}: the proof does not match a different deposit.</span>}
+        {tamper.s === "accepted" && <span role="alert" style={{ color: "#D93A3A" }}>Unexpected: the tampered proof was accepted.</span>}
+        {tamper.s === "error" && <span role="alert" style={{ color: "#D93A3A" }}>{tamper.error}</span>}
       </div>
     </section>
   );

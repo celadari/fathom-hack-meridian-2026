@@ -26,7 +26,7 @@ const SOURCES = {
   protos: "https://protos.com/yieldblox-lending-pool-hit-by-10m-hack-on-stellar/",
   rekt: "https://rekt.news/yieldblox-rekt",
 };
-const REAL_EVENT_NOTE = "YieldBlox DAO pool on Blend V2, 22 Feb 2026 00:25 UTC. ~$10.2M drained (Halborn, Protos; Rekt: $10.97M); $7.2M frozen by Tier-1 validators (Halborn; Protos: 48M XLM ≈ $7.5M).";
+const REAL_EVENT_NOTE = "YieldBlox DAO pool on Blend V2, 22 Feb 2026, 00:25 UTC: about $10–11M drained, about $7M frozen by Stellar Tier-1 validators (Halborn, Protos, Rekt).";
 
 export function Replay() {
   const { replay } = useFathom();
@@ -226,10 +226,10 @@ function ReplayRoom({ r }: { r: ReplayView }) {
 
       <p style={{ margin: 0, fontSize: "13px", color: "#7D7D7D" }}>
         Replay of the attack pattern with testnet contracts.{" "}
-        <span title={REAL_EVENT_NOTE} style={{ textDecoration: "underline dotted" }}>Real event</span>: about $10.2M drained from a Blend pool, about $7M later frozen by validators.<sup><a href="#sources" style={{ color: "#7D7D7D" }}>1</a></sup>
+        <span title={REAL_EVENT_NOTE} style={{ textDecoration: "underline dotted" }}>Real event</span>: about $10–11M drained from a Blend pool, about $7M later frozen by validators.<sup><a href="#sources" style={{ color: "#7D7D7D" }}>1</a></sup>
       </p>
       <p id="sources" style={{ margin: 0, fontSize: "12px", color: "#7D7D7D" }}>
-        1. YieldBlox DAO pool on Blend V2, 22 February 2026, 00:25 UTC. Drained: $10.2M (<a href={SOURCES.halborn} target="_blank" rel="noreferrer" style={src}>Halborn</a>, <a href={SOURCES.protos} target="_blank" rel="noreferrer" style={src}>Protos</a>); <a href={SOURCES.rekt} target="_blank" rel="noreferrer" style={src}>Rekt</a> counts $10.97M. Frozen by Stellar Tier-1 validators: $7.2M (Halborn); 48M XLM ≈ $7.5M (Protos). USTRY moved from ~$1.06 to ~$106.74 on a pair with less than $1 of hourly volume (Rekt, Protos).
+        1. YieldBlox DAO pool on Blend V2, 22 February 2026, 00:25 UTC: about $10–11M drained, about $7M frozen by Stellar Tier-1 validators. USTRY moved from about $1.06 to about $106 on a pair with less than $1 of hourly volume. Sources: <a href={SOURCES.halborn} target="_blank" rel="noreferrer" style={src}>Halborn</a>, <a href={SOURCES.protos} target="_blank" rel="noreferrer" style={src}>Protos</a>, <a href={SOURCES.rekt} target="_blank" rel="noreferrer" style={src}>Rekt</a>.
       </p>
     </main>
   );
