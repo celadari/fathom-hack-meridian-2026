@@ -46,7 +46,7 @@ try {
   await page.waitForFunction(() => /G[A-Z2-7]{3}…/.test(document.querySelector("header")?.textContent ?? ""), null, { timeout: 10_000 });
 
   // Wait until the account check settles: either a funding step or the seal button.
-  const ready = () => page.waitForFunction(() => (/Fund with Friendbot|Add trustlines|Get demo tokens/.test(document.body.innerText) || !/Reading your account|Checking your balance/.test(document.body.innerText)) && /G[A-Z2-7]{3}…/.test(document.querySelector("header")?.textContent ?? ""), null, { timeout: 60_000 });
+  const ready = () => page.waitForFunction(() => /Fund with Friendbot|Add trustlines|Get demo tokens|Lock & seal order/.test([...document.querySelectorAll("button")].map((b) => b.textContent).join("|")), null, { timeout: 60_000 });
   for (let i = 0; i < 4; i++) {
     await ready();
     const step = page.getByRole("button", { name: /Fund with Friendbot|Add trustlines|Get demo tokens/ });
@@ -66,10 +66,10 @@ try {
   await openLog();
   await collect("seed");
 
-  await ready();
   log("seal a standing buy: 30,000 USTRY at ≤ $1.04");
   await page.locator("#qty").fill("30,000");
   await page.locator("#limit").fill("1.040");
+  await ready();
   await page.getByRole("button", { name: "Lock & seal order" }).click();
   await page.waitForFunction(() => /USDC locked/.test(document.body.innerText) || /Not placed|failed/.test(document.body.innerText), null, { timeout: 120_000 });
   const proofLine = await page.locator("li", { hasText: "Zero-knowledge proof" }).first().innerText().catch(() => "");

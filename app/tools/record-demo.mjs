@@ -48,7 +48,7 @@ await loaded(w);
 await w.getByRole("button", { name: "Connect", exact: true }).click();
 await w.getByRole("menuitem", { name: /Demo wallet/ }).click();
 for (let i = 0; i < 4; i++) {
-  await w.waitForFunction(() => (/Fund with Friendbot|Add trustlines|Get demo tokens/.test(document.body.innerText) || !/Reading your account|Checking your balance/.test(document.body.innerText)) && /G[A-Z2-7]{3}…/.test(document.querySelector("header")?.textContent ?? ""), null, { timeout: 60_000 });
+  await w.waitForFunction(() => /Fund with Friendbot|Add trustlines|Get demo tokens|Lock & seal order/.test([...document.querySelectorAll("button")].map((b) => b.textContent).join("|")), null, { timeout: 60_000 });
   const step = w.getByRole("button", { name: /Fund with Friendbot|Add trustlines|Get demo tokens/ });
   if (!(await step.count())) break;
   const name = await step.innerText();

@@ -71,8 +71,8 @@ export function MyOrdersPanel({ grid, penaltyPct }: { grid: { min: number; tick:
               {o.phase === "settled" && <span style={{ color: "#40B66B" }}>Closed · filled {fmtInt(num(o.filled ?? "0"))}</span>}
               {o.phase === "missed" && <span style={{ color: "#D93A3A" }}>Not revealed · {penalty(o)} penalty</span>}
               {o.error && o.phase !== "failed" && <span style={{ color: "#D93A3A" }}>{o.error}</span>}
-              {o.placeTx && <a style={link} href={expertTx(o.placeTx)} target="_blank" rel="noreferrer">sealed tx</a>}
-              {o.revealTx && <a style={link} href={expertTx(o.revealTx)} target="_blank" rel="noreferrer">reveal tx</a>}
+              {o.placeTx && expertTx(o.placeTx) && <a style={link} href={expertTx(o.placeTx)} target="_blank" rel="noreferrer">sealed tx</a>}
+              {o.revealTx && expertTx(o.revealTx) && <a style={link} href={expertTx(o.revealTx)} target="_blank" rel="noreferrer">reveal tx</a>}
             </span>
           </li>
         ))}

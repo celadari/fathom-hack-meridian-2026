@@ -2,7 +2,7 @@
 // spec (fetched once). Reads are simulations; writes are signed by the wallet and
 // sent with the on-chain-FAILED retry (lib/tx.ts).
 import { contract } from "@stellar/stellar-sdk";
-import { NET } from "../config";
+import { ALLOW_HTTP, NET } from "../config";
 import { sendWithRetry, type Sendable } from "../lib/tx";
 
 export interface Signer {
@@ -14,7 +14,7 @@ const specs = new Map<string, Promise<contract.Spec>>();
 
 function spec(id: string): Promise<contract.Spec> {
   if (!specs.has(id)) {
-    const p = contract.Client.from({ contractId: id, rpcUrl: NET.rpc, networkPassphrase: NET.passphrase }).then((c) => c.spec);
+    const p = contract.Client.from({ contractId: id, rpcUrl: NET.rpc, allowHttp: ALLOW_HTTP, networkPassphrase: NET.passphrase }).then((c) => c.spec);
     p.catch(() => specs.delete(id));
     specs.set(id, p);
   }
@@ -29,6 +29,7 @@ async function client(id: string, signer?: Signer): Promise<Dyn> {
   const c = new contract.Client(await spec(id), {
     contractId: id,
     rpcUrl: NET.rpc,
+    allowHttp: ALLOW_HTTP,
     networkPassphrase: NET.passphrase,
     publicKey: signer?.address,
     signTransaction: signer?.signTransaction,

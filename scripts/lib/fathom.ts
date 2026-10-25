@@ -2,7 +2,7 @@
 import { randomBytes } from "node:crypto";
 import { Keypair } from "@stellar/stellar-sdk";
 import { basicNodeSigner, Client } from "@stellar/stellar-sdk/contract";
-import { PASSPHRASE, RPC_URL, readDeployment } from "./stellar.js";
+import { ALLOW_HTTP, NETWORK, PASSPHRASE, RPC_URL, readDeployment } from "./stellar.js";
 
 export const UNIT = 10_000_000n; // 7 decimals
 export enum Side {
@@ -18,6 +18,7 @@ export async function client(contractId: string, signer: Keypair): Promise<Dyn> 
   return (await Client.from({
     contractId,
     rpcUrl: RPC_URL,
+    allowHttp: ALLOW_HTTP,
     networkPassphrase: PASSPHRASE,
     publicKey: signer.publicKey(),
     ...basicNodeSigner(signer, PASSPHRASE),
@@ -81,5 +82,6 @@ export function newSalt(): Buffer {
   return Buffer.concat([Buffer.alloc(1), randomBytes(31)]);
 }
 
-export const txLink = (hash: string) => `https://stellar.expert/explorer/testnet/tx/${hash}`;
+/** stellar.expert only knows public networks; local quickstart transactions have no explorer link. */
+export const txLink = (hash: string) => (NETWORK === "testnet" ? `https://stellar.expert/explorer/testnet/tx/${hash}` : "");
 export const fmt = (x: bigint, digits = 2) => (Number(x) / Number(UNIT)).toLocaleString("en-US", { maximumFractionDigits: digits });

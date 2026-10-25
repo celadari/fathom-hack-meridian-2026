@@ -1,10 +1,10 @@
 // Getting a fresh testnet account ready to trade: XLM from Friendbot, USTRY/USDC
 // trustlines (signed by the wallet), demo tokens from the local demo server.
 import { Asset, BASE_FEE, Horizon, Operation, TransactionBuilder } from "@stellar/stellar-sdk";
-import { IDS, NET } from "../config";
+import { ALLOW_HTTP, IDS, NET } from "../config";
 import type { Signer } from "./client";
 
-export const horizon = new Horizon.Server(NET.horizon);
+export const horizon = new Horizon.Server(NET.horizon, { allowHttp: ALLOW_HTTP });
 export const USTRY = () => new Asset("USTRY", IDS.issuer);
 export const USDC = () => new Asset("USDC", IDS.issuer);
 

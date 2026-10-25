@@ -1,7 +1,7 @@
 // Polls Soroban RPC getEvents for the Fathom contracts and fans events out to
 // subscribers. Drives the animations: a new sealed order, a close, an oracle update.
 import { rpc, scValToNative } from "@stellar/stellar-sdk";
-import { IDS, NET } from "../config";
+import { ALLOW_HTTP, IDS, NET } from "../config";
 
 export interface FathomEvent {
   id: string;
@@ -15,7 +15,7 @@ export interface FathomEvent {
 }
 
 type Listener = (events: FathomEvent[]) => void;
-const server = new rpc.Server(NET.rpc);
+const server = new rpc.Server(NET.rpc, { allowHttp: ALLOW_HTTP });
 const listeners = new Set<Listener>();
 let timer: ReturnType<typeof setTimeout> | null = null;
 let cursor: string | null = null;

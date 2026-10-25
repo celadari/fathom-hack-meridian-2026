@@ -15,7 +15,8 @@ const HOST = process.env.HOST ?? "127.0.0.1";
 const TOKEN = process.env.DEMO_TOKEN ?? "";
 const ORIGINS = (process.env.ALLOWED_ORIGINS ?? "").split(",").map((s) => s.trim()).filter(Boolean);
 const LOOP = process.argv.includes("--loop") || process.env.DEMO_LOOP === "1";
-if (HOST !== "127.0.0.1" && HOST !== "localhost" && TOKEN.length < 16) {
+// DEMO_LOCAL_ONLY=1: inside docker compose, where the port is published on 127.0.0.1 only.
+if (HOST !== "127.0.0.1" && HOST !== "localhost" && TOKEN.length < 16 && process.env.DEMO_LOCAL_ONLY !== "1") {
   throw new Error("Refusing to listen publicly without DEMO_TOKEN (16+ characters)");
 }
 

@@ -91,15 +91,38 @@ cd ../app && npm install && npm run dev      # http://localhost:5173  (add ?demo
 Other scripts: `npm run worked-example` (the worked example as a real auction), `npm run replay`
 (attack replay from the CLI), `npm run seed`, `npm run auction-loop`.
 
+### Docker Compose (full demo on localhost)
+
+```bash
+cp .env.example .env.local                                   # gitignored
+(cd scripts && npx tsx export-demo-secrets.ts) > .env.local  # testnet demo keys from your Stellar CLI keystore
+docker compose up -d --build                                 # http://localhost:8080  (add ?demo)
+```
+
+| Service | What | Profile |
+|---|---|---|
+| `app` | the Vite build on unprivileged nginx (port 8080), proxying `/demo` to the demo server | default |
+| `demo-server` | demo controls + auction loop (testnet), keys from `.env.local`, state on a volume | default |
+| `app-dev` | Vite with hot reload on http://localhost:5173 | `dev` |
+| `stellar` | `stellar/quickstart` local network (protocol 29, unlimited limits) on :8000 | `local` |
+| `demo-server-local` | demo server pointed at the local network, on :8788 | `local` |
+
+All images run as non-root, read-only, with health checks and `restart: unless-stopped`; ports are
+published on 127.0.0.1 only, so the local demo server needs no token. The default network is testnet.
+
+Local network instead of testnet:
+
+```bash
+docker compose --profile local up -d stellar                     # wait for it to be healthy
+(cd scripts && FATHOM_NETWORK=local npm run deploy)               # contracts + deployments/local.json + app/.env
+DEMO_PROXY_TARGET=http://demo-server-local:8787 docker compose --profile local --profile dev up -d
+# app with hot reload on :5173 (reads app/.env); run `npm run deploy` again to switch app/.env back to testnet
+```
+
 ### Hosted demo
 
-- **Demo server on Fly** (`fly.toml`, `Dockerfile`): always on (`auto_stop_machines = "off"`), auction
-  loop running, state (bot openings) on a volume. Keys are Fly secrets exported from the local keystore
-  (`npx tsx scripts/export-demo-secrets.ts | fly secrets import`), never in the image. Demo actions need
-  `Authorization: Bearer $DEMO_TOKEN`; every POST is rate limited per IP (12/min), the faucet per address
-  (1 per 10 min). CORS only for `ALLOWED_ORIGINS`.
-- **App on Vercel** (`app/vercel.json`): builds with the committed `app/.env.production` (public contract
-  ids, `VITE_DEMO_API` pointing at the Fly server). Open with `?demo=<token>` for the demo bar.
+Google Compute Engine free-tier VM (demo server) + Cloudflare Pages (app) + Cloudflare Tunnel
+(`api.<domain>`), all in Terraform: see [infra/README.md](infra/README.md).
 
 ## Honest limits
 

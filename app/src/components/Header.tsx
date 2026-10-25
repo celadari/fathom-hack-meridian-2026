@@ -2,7 +2,7 @@
 // search bar replaced by an asset switcher, a network pill and the wallet button.
 import { useState, type CSSProperties, type ReactNode } from "react";
 import { Link, NavLink } from "react-router";
-import { DEMO, shortAddr } from "../config";
+import { DEMO, NET, shortAddr } from "../config";
 import { useFathom } from "../data/useFathom";
 import { useWallet } from "../stellar/wallet";
 
@@ -92,7 +92,7 @@ export function Header() {
         </nav>
         <AssetSwitcher />
         <span style={{ fontSize: "12px", color: source === "mock" ? "#B7791F" : "#7D7D7D", border: "1px solid #F0F0F0", borderRadius: "999px", padding: "6px 12px", whiteSpace: "nowrap" }}>
-          {source === "mock" ? "Mock data" : "Stellar testnet · demo"}
+          {source === "mock" ? "Mock data" : NET.name === "local" ? "Stellar local network · demo" : "Stellar testnet · demo"}
         </span>
         <WalletButton />
       </header>

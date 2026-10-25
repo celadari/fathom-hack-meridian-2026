@@ -2,11 +2,15 @@
 const env = import.meta.env;
 
 export const NET = {
+  /** "testnet" (default) or "local" (stellar/quickstart via docker compose --profile local). */
+  name: ((env.VITE_NETWORK as string | undefined) ?? "testnet") as "testnet" | "local",
   passphrase: env.VITE_NETWORK_PASSPHRASE as string,
   rpc: env.VITE_RPC_URL as string,
   horizon: env.VITE_HORIZON_URL as string,
-  friendbot: "https://friendbot.stellar.org",
+  friendbot: (env.VITE_FRIENDBOT_URL as string | undefined) ?? "https://friendbot.stellar.org",
 };
+/** Plain-HTTP endpoints (local quickstart) must be allowed explicitly. */
+export const ALLOW_HTTP = NET.rpc?.startsWith("http://") || NET.horizon?.startsWith("http://");
 
 export const IDS = {
   auction: env.VITE_AUCTION as string,
@@ -82,6 +86,7 @@ export const UNIT = 10_000_000n;
 /** 7-decimal base units → number. */
 export const num = (x: bigint | number | string | undefined | null) => (x == null ? 0 : Number(BigInt(x)) / 1e7);
 
-export const expertTx = (hash: string) => `https://stellar.expert/explorer/testnet/tx/${hash}`;
-export const expertContract = (id: string) => `https://stellar.expert/explorer/testnet/contract/${id}`;
+/** stellar.expert only covers public networks: no links on a local quickstart network. */
+export const expertTx = (hash: string) => (NET.name === "testnet" ? `https://stellar.expert/explorer/testnet/tx/${hash}` : "");
+export const expertContract = (id: string) => (NET.name === "testnet" ? `https://stellar.expert/explorer/testnet/contract/${id}` : "");
 export const shortAddr = (a: string) => `${a.slice(0, 4)}…${a.slice(-4)}`;

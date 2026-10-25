@@ -13,3 +13,4 @@ test_snapshots/
 .compare/
 *.tsbuildinfo
 circuits/order/target/
+deployments/local.json

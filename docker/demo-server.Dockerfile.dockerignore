@@ -1,0 +1,7 @@
+**
+!scripts/**
+!deployments/**
+scripts/node_modules
+scripts/.state
+**/.env
+**/.env.*

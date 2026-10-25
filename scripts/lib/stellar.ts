@@ -1,5 +1,8 @@
-// Shared testnet helpers. Keys live in the Stellar CLI keystore (~/.config/stellar),
-// never in this repo.
+// Shared network helpers. Keys live in the Stellar CLI keystore (~/.config/stellar) or, on a
+// host, in FATHOM_KEY_* environment variables; never in this repo.
+//
+// FATHOM_NETWORK=testnet (default) or local (stellar/quickstart, docker compose --profile local).
+// FATHOM_RPC_URL / FATHOM_HORIZON_URL / FATHOM_FRIENDBOT_URL override the URLs (e.g. inside compose).
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -7,13 +10,17 @@ import { fileURLToPath } from "node:url";
 import { Asset, BASE_FEE, Horizon, Keypair, Networks, Operation, TransactionBuilder, xdr } from "@stellar/stellar-sdk";
 
 export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
-export const NETWORK = "testnet";
-export const PASSPHRASE = Networks.TESTNET;
-export const HORIZON_URL = "https://horizon-testnet.stellar.org";
-export const RPC_URL = "https://soroban-testnet.stellar.org";
-export const horizon = new Horizon.Server(HORIZON_URL);
+export const NETWORK = process.env.FATHOM_NETWORK === "local" ? "local" : "testnet";
+const LOCAL = NETWORK === "local";
+export const PASSPHRASE = LOCAL ? Networks.STANDALONE : Networks.TESTNET;
+export const HORIZON_URL = process.env.FATHOM_HORIZON_URL ?? (LOCAL ? "http://localhost:8000" : "https://horizon-testnet.stellar.org");
+export const RPC_URL = process.env.FATHOM_RPC_URL ?? (LOCAL ? "http://localhost:8000/rpc" : "https://soroban-testnet.stellar.org");
+export const FRIENDBOT_URL = process.env.FATHOM_FRIENDBOT_URL ?? (LOCAL ? "http://localhost:8000/friendbot" : "https://friendbot.stellar.org");
+/** Plain-HTTP endpoints (local quickstart) must be allowed explicitly. */
+export const ALLOW_HTTP = RPC_URL.startsWith("http://") || HORIZON_URL.startsWith("http://");
+export const horizon = new Horizon.Server(HORIZON_URL, { allowHttp: ALLOW_HTTP });
 
-const DEPLOYMENTS = resolve(ROOT, "deployments/testnet.json");
+const DEPLOYMENTS = resolve(ROOT, `deployments/${NETWORK}.json`);
 
 export type Deployment = Record<string, string>;
 
@@ -57,7 +64,7 @@ export function ensureIdentity(name: string): Keypair {
 }
 
 async function submit(source: Keypair, ops: xdr.Operation[]) {
-  const account = await horizon.loadAccount(source.publicKey());
+  const account = await loadOrFund(source.publicKey());
   const builder = new TransactionBuilder(account, { fee: BASE_FEE, networkPassphrase: PASSPHRASE }).setTimeout(60);
   ops.forEach((op) => builder.addOperation(op));
   const tx = builder.build();
@@ -65,9 +72,20 @@ async function submit(source: Keypair, ops: xdr.Operation[]) {
   return horizon.submitTransaction(tx);
 }
 
+/** Load an account; on a fresh network (local quickstart, testnet reset) create it with Friendbot first. */
+export async function loadOrFund(address: string) {
+  try {
+    return await horizon.loadAccount(address);
+  } catch (e) {
+    if ((e as { response?: { status?: number } })?.response?.status !== 404) throw e;
+    await fetch(`${FRIENDBOT_URL}?addr=${address}`);
+    return horizon.loadAccount(address);
+  }
+}
+
 /** Add trustlines for `assets` on `holder`, skipping ones that already exist. */
 export async function ensureTrustlines(holder: Keypair, assets: Asset[]) {
-  const account = await horizon.loadAccount(holder.publicKey());
+  const account = await loadOrFund(holder.publicKey());
   const missing = assets.filter(
     (a) => !account.balances.some((b) => "asset_code" in b && b.asset_code === a.code && b.asset_issuer === a.issuer),
   );

@@ -11,6 +11,6 @@ export default defineConfig({
   server: {
     port: 5173,
     // The demo server (scripts/demo-server.ts) holds the testnet demo keys.
-    proxy: { "/demo": "http://127.0.0.1:8787" },
+    proxy: { "/demo": process.env.DEMO_PROXY_TARGET ?? "http://127.0.0.1:8787" },
   },
 });

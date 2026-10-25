@@ -21,7 +21,7 @@ type Opening = { bot: string; auction: string; side: Side; price_tick: number; q
 type Openings = Record<string, Opening>; // by order id
 
 export type Step = { label: string; hash?: string; link?: string };
-const step = (label: string, hash?: string): Step => ({ label, hash, link: hash ? txLink(hash) : undefined });
+const step = (label: string, hash?: string): Step => ({ label, hash, link: hash ? txLink(hash) || undefined : undefined });
 
 function load<T>(file: string, empty: T): T {
   return existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) : empty;
@@ -165,9 +165,11 @@ export async function revealBots(auctionId: bigint, log: (s: string) => void = (
     if (pending.length) log(`auction #${auctionId} is not in its reveal window; ${pending.length} bot orders stay sealed`);
     return steps;
   }
-  // One failed reveal must not stop the others.
-  const results = await Promise.allSettled(
-    pending.map(async ([id, o]) => {
+  // Parallel across bots, sequential per bot: two transactions from the same account at once
+  // collide on its sequence number (TRY_AGAIN_LATER, or stuck pending). One failure must not stop the others.
+  const byBot = new Map<string, [string, Opening][]>();
+  for (const e of pending) byBot.set(e[1].bot, [...(byBot.get(e[1].bot) ?? []), e]);
+  const revealOne = async ([id, o]: [string, Opening]) => {
       const kp = botKey(o.bot);
       const c = await auction(kp);
       const order = await read<{ status: number }>(c, "order", { id: BigInt(id) });
@@ -181,9 +183,14 @@ export async function revealBots(auctionId: bigint, log: (s: string) => void = (
       o.revealed = true;
       log(`${o.bot} revealed #${id}`);
       steps.push(step(`${o.bot} revealed order #${id}`, hash));
+  };
+  await Promise.all(
+    [...byBot.values()].map(async (orders) => {
+      for (const e of orders) {
+        await revealOne(e).catch((err) => log(`reveal of #${e[0]} failed: ${String(err?.message ?? err).slice(0, 160)}`));
+      }
     }),
   );
-  results.forEach((r, i) => r.status === "rejected" && log(`reveal of #${pending[i][0]} failed: ${String(r.reason?.message ?? r.reason).slice(0, 160)}`));
   save(OPENINGS, openings);
   return steps;
 }
@@ -300,7 +307,7 @@ export async function faucet(address: string, amount = 250_000): Promise<Step[]>
   try {
     account = await horizon.loadAccount(address);
   } catch {
-    throw new Error("account not found on testnet: fund it with Friendbot first");
+    throw new Error("account not found on the network: fund it with Friendbot first");
   }
   const has = (a: Asset) => account.balances.some((b) => "asset_code" in b && b.asset_code === a.code && b.asset_issuer === a.issuer);
   if (!has(ustry) || !has(usdc)) throw new Error("add the USTRY and USDC trustlines first");

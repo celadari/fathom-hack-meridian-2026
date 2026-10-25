@@ -1,0 +1,8 @@
+**
+!app/**
+!docker/nginx.conf
+app/node_modules
+app/dist
+app/.compare
+app/.env
+app/.env.local
