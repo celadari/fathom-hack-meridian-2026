@@ -9,3 +9,4 @@ dist/
 circuits/**/target/
 .DS_Store
 test_snapshots/
+.compare/

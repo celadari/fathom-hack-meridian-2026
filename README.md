@@ -94,6 +94,23 @@ same checks but records a rejection on-chain (a `borrow_rejected` event with eve
 moved), so the replay has a transaction to link to. It is not called `try_borrow` because Soroban's
 generated Rust client already defines `try_borrow` for `borrow`.
 
+## App (`app/`)
+
+Vite + React + TypeScript, ported from `designs/`. Screens: Auction (`/`), Close (`/close`),
+Liquidity (`/liquidity`), Attack replay (`/replay`), How it works (`/how-it-works`).
+
+```bash
+cd app && npm install
+npm run dev                    # http://localhost:5173
+npm test                       # unit tests (tx retry)
+npm run compare                # screenshots vs designs at 1440/390 → app/.compare/
+```
+
+All screen data comes from one hook, `useFathom()`, over the `FathomData` shape in
+`src/data/types.ts`. It currently serves `src/data/mock.ts`, and the header badge says "Mock data" until it
+reads testnet. `src/lib/tx.ts` sends contract calls with the same retry rule as the scripts.
+Differences from the designs, and why: [docs/design-diff.md](docs/design-diff.md).
+
 ## Conventions
 
 All prices are 7-decimal fixed point (`$1.06 = 10_600_000`), like Stellar token amounts.

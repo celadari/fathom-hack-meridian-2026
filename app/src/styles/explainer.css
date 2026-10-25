@@ -1,0 +1,36 @@
+/* designs/Explainer.html animations. Its class names (pop, draw, ring) clash with the
+   other screens, so everything is scoped under .fx and keyframes are prefixed fx-. */
+.fx svg * { transform-box: fill-box; }
+@keyframes fx-slideIn { 0%, 10% { transform: translateX(0); opacity: 1 } 35% { transform: translateX(150px) scale(.55); opacity: 0 } 100% { transform: translateX(150px) scale(.55); opacity: 0 } }
+@keyframes fx-flap { 0%, 35% { transform: scaleY(-1) } 45%, 100% { transform: scaleY(1) } }
+@keyframes fx-popIn { 0%, 45% { transform: scale(0); opacity: 0 } 55% { transform: scale(1.15); opacity: 1 } 62%, 90% { transform: scale(1); opacity: 1 } 100% { opacity: 0 } }
+@keyframes fx-hashType { 0%, 40% { opacity: 0 } 50%, 92% { opacity: 1 } 100% { opacity: 0 } }
+@keyframes fx-drop { 0% { transform: translateY(-70px); opacity: 0 } 15% { opacity: 1 } 55%, 100% { transform: translateY(0); opacity: 0 } }
+@keyframes fx-vaultGlow { 0%, 40% { stroke: #F0F0F0 } 55% { stroke: #FC72FF } 100% { stroke: #F0F0F0 } }
+@keyframes fx-draw { 0%, 20% { stroke-dashoffset: 700 } 65%, 100% { stroke-dashoffset: 0 } }
+@keyframes fx-openEnv { 0%, 10% { transform: translateY(0); opacity: 1 } 25%, 100% { transform: translateY(-8px); opacity: .25 } }
+@keyframes fx-pulse { 0%, 60% { transform: scale(0); opacity: 0 } 70% { transform: scale(1.3); opacity: 1 } 80%, 100% { transform: scale(1); opacity: 1 } }
+@keyframes fx-ring { 0% { transform: scale(.6); opacity: .7 } 100% { transform: scale(2.2); opacity: 0 } }
+@keyframes fx-depthDrop { 0%, 30% { transform: scaleY(1) } 55%, 100% { transform: scaleY(.667) } }
+@keyframes fx-attackIn { 0%, 10% { transform: translateX(-120px); opacity: 0 } 25%, 45% { transform: translateX(0); opacity: 1 } 55%, 100% { transform: translateX(0); opacity: 0 } }
+@keyframes fx-labelSwap1 { 0%, 50% { opacity: 1 } 58%, 100% { opacity: 0 } }
+@keyframes fx-labelSwap2 { 0%, 50% { opacity: 0 } 58%, 100% { opacity: 1 } }
+.fx .slide { animation: fx-slideIn 6s ease-in-out infinite }
+.fx .flap { transform-origin: 50% 0%; animation: fx-flap 6s ease-in-out infinite }
+.fx .pop { transform-origin: center; animation: fx-popIn 6s ease-out infinite }
+.fx .hash { animation: fx-hashType 6s linear infinite }
+.fx .coin { animation: fx-drop 3s ease-in infinite }
+.fx .coin2 { animation: fx-drop 3s ease-in 1s infinite }
+.fx .coin3 { animation: fx-drop 3s ease-in 2s infinite }
+.fx .vault { animation: fx-vaultGlow 3s ease-in-out infinite }
+.fx .draw { stroke-dasharray: 700; animation: fx-draw 6s ease-in-out infinite }
+.fx .env { animation: fx-openEnv 6s ease-in-out infinite }
+.fx .dot { transform-origin: center; animation: fx-pulse 6s ease-out infinite }
+.fx .ring { transform-origin: center; animation: fx-ring 2s ease-out infinite }
+.fx .depth { transform-origin: 50% 100%; animation: fx-depthDrop 6s ease-in-out infinite }
+.fx .attack { animation: fx-attackIn 6s ease-in-out infinite }
+.fx .l1 { animation: fx-labelSwap1 6s linear infinite }
+.fx .l2 { animation: fx-labelSwap2 6s linear infinite }
+@media (prefers-reduced-motion: reduce) { .fx * { animation: none !important } .fx .slide, .fx .attack, .fx .l1 { opacity: 0 } .fx .l2 { opacity: 1 } }
+
+@media (max-width: 640px) { .fx-grid { grid-template-columns: minmax(0, 1fr) !important; } }
