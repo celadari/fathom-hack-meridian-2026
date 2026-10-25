@@ -119,7 +119,11 @@ cd app && npm install && npm run dev           # http://localhost:5173 (proxies 
 - **`?demo`:** a bottom bar with Seed bot orders, Next auction (ends commits, waits for your reveals,
   closes and settles, up to the auction on screen) and Run attack replay (each step a real transaction).
   The demo server holds the admin, bot and attacker keys (Stellar CLI keystore); the browser never does.
-- **`?mock`:** the design numbers, for `npm run compare` (screenshots vs `designs/`).
+- **`?mock`:** the design numbers, injected only by `npm run compare` (screenshots vs `designs/`); the app
+  itself ships no mock data.
+- **Every number's source** (contract read, event, config, computed, hard-coded label):
+  [docs/number-audit.md](docs/number-audit.md). Values we set ourselves (mock NAV, mock DEX price, attack
+  scenario) carry a "set by us" tag.
 
 ```bash
 npm test               # unit tests: tx retry, commitment matches the contract

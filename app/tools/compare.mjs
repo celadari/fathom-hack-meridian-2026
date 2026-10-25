@@ -13,6 +13,7 @@ import { fileURLToPath } from "node:url";
 import pixelmatch from "pixelmatch";
 import { chromium } from "playwright";
 import { PNG } from "pngjs";
+import { MOCK_VIEWS } from "./mock-views.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const DESIGNS = resolve(ROOT, "../designs");
@@ -101,6 +102,8 @@ for (const c of CASES.filter((x) => !only || x.name.startsWith(only))) {
   writeFileSync(designHtml, renderDesign(c.design, c.state));
   for (const width of WIDTHS) {
     const ctx = await browser.newContext({ viewport: { width, height: 980 }, reducedMotion: "reduce", deviceScaleFactor: 1 });
+    // The app ships no mock data: inject the design numbers for ?mock.
+    await ctx.addInitScript((m) => { window.__FATHOM_MOCK__ = m; }, MOCK_VIEWS);
     const page = await ctx.newPage();
     const shot = async (url, act) => {
       await page.goto(url, { waitUntil: "networkidle" });

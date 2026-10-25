@@ -8,6 +8,7 @@ import { Link } from "react-router";
 import { FundingPanel, useAccount } from "../components/Funding";
 import { Header, Page } from "../components/Header";
 import { MyOrdersPanel } from "../components/MyOrdersPanel";
+import { NAV_TITLE, SetByUs } from "../components/SetByUs";
 import { Slice } from "../components/State";
 import { DEMO, UNIT } from "../config";
 import type { AuctionView } from "../data/types";
@@ -130,7 +131,7 @@ function AuctionRoom({ a }: { a: AuctionView }) {
           <span style={{ color: "#7D7D7D", fontSize: "14px" }}>
             <label htmlFor="limit">{buy ? "Max price" : "Min price"}</label> $
             <input id="limit" inputMode="decimal" value={priceText[side]} onChange={(e) => setPriceText({ ...priceText, [side]: e.target.value })} style={priceInput} />
-            {" "}· NAV {a.nav ? fmtUsd(a.nav) : "—"}
+            {" "}· NAV {a.nav ? fmtUsd(a.nav) : "—"} <SetByUs title={NAV_TITLE} />
           </span>
         </div>
         <div style={{ alignSelf: "center", margin: "-14px 0", zIndex: 1, width: "40px", height: "40px", borderRadius: "12px", background: "#F9F9F9", border: "4px solid #FFFFFF", display: "flex", alignItems: "center", justifyContent: "center", color: "#131313" }} aria-hidden="true">↓</div>
@@ -184,7 +185,7 @@ function AuctionRoom({ a }: { a: AuctionView }) {
             {p?.step === "error" && <span role="alert" style={{ fontSize: "13px", color: "#D93A3A" }}>{p.error}</span>}
           </div>
         )}
-        <FundingPanel account={account} />
+        <FundingPanel account={account} minDeposit={a.depositSizes[0] ?? 0} />
         <MyOrdersPanel grid={a.grid} penaltyPct={a.penaltyPct} />
       </section>
 

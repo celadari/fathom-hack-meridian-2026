@@ -67,6 +67,8 @@ export interface CloseView {
   nav: number;
   haircutPct: number;
   medianWindow: number;
+  /** Price grid step (auction config). */
+  tick: number;
   /** Revealed orders and their fills, in reveal order. */
   fills: FillRow[];
 }
@@ -96,6 +98,7 @@ export interface LiquidityView {
   minDepthWindow: number;
   depthWindowLabel: string;
   depthFloorPct: number;
+  standingDays: number;
   standingOrders: number;
   medianWindow: number;
   /** Oldest first. */

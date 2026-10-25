@@ -1,6 +1,7 @@
 // Port of designs/Dashboard.html (published liquidity).
 // "Lowest depth, 4 weeks" reads the oracle's actual depth window (30 min in the demo).
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
+import { NAV_TITLE, SetByUs } from "../components/SetByUs";
 import { Header, Page } from "../components/Header";
 import { Slice } from "../components/State";
 import type { LiquidityStatus, LiquidityView as LiquidityData } from "../data/types";
@@ -15,12 +16,14 @@ const STATUS: Record<LiquidityStatus, { label: string; style: CSSProperties }> =
 };
 const GAUGE = 591; // circumference of r=94
 
-const stat = (label: string, value: string) => (
+const stat = (label: string, value: string, note?: ReactNode) => (
   <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
     <span style={{ fontSize: "12px", color: "#7D7D7D" }}>{label}</span>
     <span style={{ fontVariantNumeric: "tabular-nums", fontSize: "24px" }}>{value}</span>
+    {note}
   </div>
 );
+const example = <span style={{ fontSize: "11px", color: "#7D7D7D", border: "1px solid #F0F0F0", borderRadius: "999px", padding: "1px 6px", marginLeft: "6px" }}>example, not integrated</span>;
 
 export function Liquidity() {
   const { liquidity } = useFathom();
@@ -72,11 +75,11 @@ function LiquidityView({ l }: { l: LiquidityData }) {
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "16px" }}>
                 {stat(`Price (${l.medianWindow}-auction median)`, l.status === "Ok" ? fmtUsd(l.price) : "Not published")}
-                {stat(`Haircut vs NAV ${fmtUsd(l.nav)}`, fmtPct(l.haircutPct))}
+                {stat(`Haircut vs NAV ${fmtUsd(l.nav)}`, fmtPct(l.haircutPct), <span><SetByUs title={NAV_TITLE} /></span>)}
                 {stat("Standing buy orders", fmtInt(l.standingOrders))}
                 {stat(`Lowest depth, ${l.depthWindowLabel}`, fmtInt(l.minDepthWindow))}
               </div>
-              <p style={{ margin: 0, fontSize: "13px", color: "#7D7D7D" }}>Depth counts locked 7-day buy orders priced at most {l.depthFloorPct}% below NAV. Selling to yourself uses them up, so it can only lower this number.</p>
+              <p style={{ margin: 0, fontSize: "13px", color: "#7D7D7D" }}>Depth counts locked {l.standingDays}-day buy orders priced at most {l.depthFloorPct}% below NAV. Selling to yourself uses them up, so it can only lower this number.</p>
             </div>
           </section>
 
@@ -90,12 +93,12 @@ function LiquidityView({ l }: { l: LiquidityData }) {
               </span>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: "6px", borderTop: "1px solid #F0F0F0", paddingTop: "16px" }}>
-              <span style={{ fontSize: "14px" }}>New Blend pool</span>
+              <span style={{ fontSize: "14px" }}>New Blend pool{example}</span>
               <code style={{ fontVariantNumeric: "tabular-nums", fontSize: "13px", color: "#FC72FF", background: "#FFFFFF", border: "1px solid #F0F0F0", borderRadius: "8px", padding: "10px 12px" }}>lastprice({l.asset}) → {l.status === "Ok" ? fmtUsd(l.price) : "None"}</code>
-              <span style={{ fontSize: "12px", color: "#7D7D7D" }}>Standard SEP-40 call. No code change in the pool.</span>
+              <span style={{ fontSize: "12px", color: "#7D7D7D" }}>Standard SEP-40 call: a pool would only need Fathom's oracle address.</span>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: "6px", borderTop: "1px solid #F0F0F0", paddingTop: "16px" }}>
-              <span style={{ fontSize: "14px" }}>DEX router</span>
+              <span style={{ fontSize: "14px" }}>DEX router{example}</span>
               <span style={{ fontSize: "12px", color: "#7D7D7D" }}>Flags trades priced far from the Fathom median.</span>
             </div>
           </section>
@@ -108,7 +111,7 @@ function LiquidityView({ l }: { l: LiquidityData }) {
           </div>
           <svg viewBox="0 0 1240 220" role="img" aria-label={`${n} auctions: clearing price between ${fmtUsd(Math.min(...prices))} and ${fmtUsd(Math.max(...prices))} under a NAV line at ${fmtUsd(l.nav)}; depth between ${fmtInt(Math.min(...depths))} and ${fmtInt(Math.max(...depths))} ${l.asset}`} style={{ width: "100%", height: "auto" }}>
             <line x1="40" y1="40" x2="1220" y2="40" stroke="#7D7D7D" strokeDasharray="6 6" />
-            <text x="1220" y="30" textAnchor="end" fontFamily="Inter, sans-serif" fontSize="12" fill="#7D7D7D">NAV {fmtUsd(l.nav)}</text>
+            <text x="1220" y="30" textAnchor="end" fontFamily="Inter, sans-serif" fontSize="12" fill="#7D7D7D">NAV {fmtUsd(l.nav)} · <tspan fill="#B7791F">demo feed (set by us)</tspan></text>
             <g className="bars" fill="#FFD6FF">
               {l.history.map((h, i) => <rect key={h.auction} x={hx(i) - 30} y={210 - bh(h.depth)} width="60" height={bh(h.depth)} />)}
             </g>

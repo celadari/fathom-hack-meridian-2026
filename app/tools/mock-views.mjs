@@ -1,11 +1,10 @@
-// Mock data: the worked example and the numbers the designs show. Used only with
-// ?mock (the screenshot comparison against designs/); the header then says "Mock data".
-import type { AuctionView, CloseView, LiquidityView, ReplayView } from "./types";
-
+// Mock views: the worked example and the numbers the designs show. Not part of the app:
+// tools/compare.mjs injects them as window.__FATHOM_MOCK__ to compare layouts with designs/.
+// Shape: AuctionView / CloseView / LiquidityView / ReplayView (src/data/types.ts).
 const now = Date.now();
 const min = 60_000;
 
-export const MOCK: { auction: AuctionView; close: CloseView; liquidity: LiquidityView; replay: ReplayView } = {
+export const MOCK_VIEWS = {
   auction: {
     id: 142,
     base: "USTRY",
@@ -42,6 +41,7 @@ export const MOCK: { auction: AuctionView; close: CloseView; liquidity: Liquidit
     nav: 1.06,
     haircutPct: 1.9,
     medianWindow: 7,
+    tick: 0.01,
     fills: [
       { who: "Alice (fund)", side: "buy", qty: 30_000, limit: 1.04, filled: 30_000, standing: true },
       { who: "Dan", side: "buy", qty: 10_000, limit: 1.03, filled: 0, standing: false },
@@ -52,7 +52,7 @@ export const MOCK: { auction: AuctionView; close: CloseView; liquidity: Liquidit
 
   liquidity: {
     asset: "USTRY",
-    assetName: "Etherfuse US Treasury token",
+    assetName: "Etherfuse US Treasury token (testnet demo)",
     status: "Ok",
     price: 1.04,
     nav: 1.06,
@@ -61,6 +61,7 @@ export const MOCK: { auction: AuctionView; close: CloseView; liquidity: Liquidit
     minDepthWindow: 24_800,
     depthWindowLabel: "30 min",
     depthFloorPct: 5,
+    standingDays: 7,
     standingOrders: 9,
     medianWindow: 7,
     history: [

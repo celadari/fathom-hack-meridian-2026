@@ -3,8 +3,16 @@
 // browser; step 2 describes fixed-size deposits instead of a confidential token;
 // the attacker is referred to neutrally.
 import { Header, Page } from "../components/Header";
+import { useFathom } from "../data/useFathom";
+import { fmtK } from "../lib/format";
 
 export function HowItWorks() {
+  // Rules quoted in the copy come from the contracts (auction params, oracle params).
+  const { auction, liquidity } = useFathom();
+  const sizes = auction.status === "ready" ? auction.data.depositSizes : null;
+  const days = auction.status === "ready" ? auction.data.standingDays : null;
+  const median = liquidity.status === "ready" ? liquidity.data.medianWindow : null;
+  const sizesText = sizes ? `${sizes.length} sizes (${sizes.map(fmtK).join(", ")})` : "a few fixed sizes";
   return (
     <Page minHeight={1080} className="fx">
       <Header />
@@ -43,7 +51,7 @@ export function HowItWorks() {
       <text x="40" y="40" fontSize="13" fill="#7D7D7D">Price and quantity hidden</text>
       <text x="520" y="40" textAnchor="end" fontSize="13" fill="#40B66B">Side and size visible</text>
       </svg>
-      <div style={{ display: 'flex', gap: '12px', alignItems: 'baseline' }}><span style={{ color: '#FC72FF', fontWeight: '600' }}>2</span><div><div style={{ fontWeight: '535', fontSize: '17px' }}>Money locked in a fixed size</div><div style={{ color: '#7D7D7D', fontSize: '14px' }}>Deposits come in three sizes (10K, 50K, 250K), so escrow shows a bucket, not your order. Price and quantity stay hidden until the close; side and deposit size are visible. Confidential tokens would hide those too (not in this demo).</div></div></div>
+      <div style={{ display: 'flex', gap: '12px', alignItems: 'baseline' }}><span style={{ color: '#FC72FF', fontWeight: '600' }}>2</span><div><div style={{ fontWeight: '535', fontSize: '17px' }}>Money locked in a fixed size</div><div style={{ color: '#7D7D7D', fontSize: '14px' }}>Deposits come in {sizesText}, so escrow shows a bucket, not your order. Price and quantity stay hidden until the close; side and deposit size are visible. Confidential tokens would hide those too (not in this demo).</div></div></div>
       </section>
       
       <section aria-label="Step 3, close" style={{ background: '#FFFFFF', border: '1px solid #F0F0F0', borderRadius: '24px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -78,7 +86,7 @@ export function HowItWorks() {
       <rect x="410" y="158" width="130" height="34" rx="17" fill="#FFFFFF" stroke="#F0F0F0" /><text x="475" y="180" textAnchor="middle">DEX router</text>
       </g>
       </svg>
-      <div style={{ display: 'flex', gap: '12px', alignItems: 'baseline' }}><span style={{ color: '#FC72FF', fontWeight: '600' }}>4</span><div><div style={{ fontWeight: '535', fontSize: '17px' }}>Published as an oracle</div><div style={{ color: '#7D7D7D', fontSize: '14px' }}>Price (median of 7 auctions) and depth go on Stellar through the standard SEP-40 feed. Any pool or DEX can read them.</div></div></div>
+      <div style={{ display: 'flex', gap: '12px', alignItems: 'baseline' }}><span style={{ color: '#FC72FF', fontWeight: '600' }}>4</span><div><div style={{ fontWeight: '535', fontSize: '17px' }}>Published as an oracle</div><div style={{ color: '#7D7D7D', fontSize: '14px' }}>Price (median of {median ? `${median} auctions` : "recent auctions"}) and depth go on Stellar through the standard SEP-40 feed. Any pool or DEX can read them.</div></div></div>
       </section>
       </div>
       
@@ -92,7 +100,7 @@ export function HowItWorks() {
       <text x="470" y="90" fontSize="13" fill="#7D7D7D">Their locked buy order</text>
       <text x="470" y="110" fontSize="13" fill="#7D7D7D">gets used up.</text>
       </svg>
-      <div style={{ flex: '1 1 320px', display: 'flex', flexDirection: 'column', gap: '6px' }}><span style={{ color: '#FC72FF', fontWeight: '600' }}>Why you can't fake depth</span><span style={{ fontSize: '17px', fontWeight: '535' }}>Depth only counts buy orders locked for 7 days.</span><span style={{ color: '#7D7D7D', fontSize: '14px' }}>If someone sells into their own order, that order is filled and leaves the book. Self-trading can only make depth smaller, never bigger.</span></div>
+      <div style={{ flex: '1 1 320px', display: 'flex', flexDirection: 'column', gap: '6px' }}><span style={{ color: '#FC72FF', fontWeight: '600' }}>Why you can't fake depth</span><span style={{ fontSize: '17px', fontWeight: '535' }}>Depth only counts buy orders locked for {days ? `${days} days` : "several days"}.</span><span style={{ color: '#7D7D7D', fontSize: '14px' }}>If someone sells into their own order, that order is filled and leaves the book. Self-trading can only make depth smaller, never bigger.</span></div>
       </section>
       </main>
     </Page>

@@ -1,14 +1,13 @@
 // Contract reads → view types. Every number here comes from a contract read,
 // except the replay scenario's attack size, which is labelled.
-import { IDS, num } from "../config";
+import { IDS, num, SET_BY_US } from "../config";
 import { read } from "../stellar/client";
 import type { AuctionView, CloseView, FillRow, HistoryPoint, LiquidityStatus, LiquidityView, RejectReason, ReplayView, SealedOrderRow } from "./types";
 
 const ASSET = () => ({ tag: "Stellar", values: [IDS.ustry] });
 const STATUS: LiquidityStatus[] = ["NoPrice", "LowLiquidity", "Ok"];
 const REASONS: RejectReason[] = ["NoPrice", "NoPrice", "DepthTooLow", "InsufficientCollateral", "PoolEmpty", "BadAmount"];
-/** The replay's attack size (inputs, not measurements). */
-export const ATTACK = { collateral: 13_000, borrow: 1_000_000, pump: 106 };
+const ATTACK = SET_BY_US.attack;
 
 type B = bigint;
 interface RawAuction { id: B; commit_end: B; reveal_end: B; orders: B[]; closed: boolean }
@@ -91,6 +90,7 @@ export async function loadClose(): Promise<CloseView | null> {
     nav,
     haircutPct: nav > 0 && last.cleared ? ((nav - price) / nav) * 100 : 0,
     medianWindow: oracle.median_window,
+    tick: num(cfg.tick),
     fills: fills.map<FillRow>((f) => ({
       who: `${f.owner.slice(0, 4)}…${f.owner.slice(-4)}`,
       owner: f.owner,
@@ -128,6 +128,7 @@ export async function loadLiquidity(): Promise<LiquidityView | null> {
     minDepthWindow: num(liq.min_depth_window),
     depthWindowLabel: windowSecs >= 86_400 ? `${Math.round(windowSecs / 86_400)} days` : windowSecs >= 3600 ? `${Math.round(windowSecs / 3600)} h` : `${Math.round(windowSecs / 60)} min`,
     depthFloorPct: params.depth_floor_bps / 100,
+    standingDays: Number(params.standing_secs) / 86_400,
     standingOrders: book.length,
     medianWindow: oracle.median_window,
     history,

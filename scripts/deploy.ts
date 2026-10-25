@@ -135,6 +135,11 @@ async function main() {
       `VITE_ORACLE=${d.oracle}`,
       `VITE_POOL_A=${d.pool_a}`,
       `VITE_POOL_B=${d.pool_b}`,
+      "# Set by us in scripts/config.ts (shown in the app as demo feed / attack scenario).",
+      `VITE_DEX_START=${CONFIG.ustry.dexStart}`,
+      `VITE_ATTACK_COLLATERAL=${CONFIG.replay.collateral}`,
+      `VITE_ATTACK_BORROW=${CONFIG.replay.borrow}`,
+      `VITE_ATTACK_PUMP=${CONFIG.replay.pump}`,
       "",
     ].join("\n"),
   );

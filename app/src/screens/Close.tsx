@@ -2,19 +2,19 @@
 // so the same component draws any auction, not just the worked example.
 import { Link } from "react-router";
 import { Header, Page } from "../components/Header";
+import { NAV_TITLE, SetByUs } from "../components/SetByUs";
 import { Slice } from "../components/State";
 import type { CloseView as CloseViewData, FillRow } from "../data/types";
 import { useFathom } from "../data/useFathom";
 import { fmtInt, fmtUsd, fmtUtc } from "../lib/format";
 
-const TICK = 0.01;
 const X0 = 80;
 const X1 = 530;
 const Y_ZERO = 280;
 const Y_TOP = 40;
 
 /** Demand/supply step curves on the price levels around the book, in the design's coordinates. */
-function curves(fills: FillRow[], price: number, matched: number) {
+function curves(fills: FillRow[], price: number, matched: number, TICK: number) {
   const limits = fills.map((f) => f.limit);
   const lo = Math.round(Math.min(...limits) / TICK);
   const hi = Math.round(Math.max(...limits) / TICK) + 1;
@@ -77,7 +77,7 @@ function CloseView({ c }: { c: CloseViewData }) {
       </main>
     );
   }
-  const k = curves(c.fills, c.cleared ? c.price : c.fills[0].limit, c.matched);
+  const k = curves(c.fills, c.cleared ? c.price : c.fills[0].limit, c.matched, c.tick);
   const price = c.cleared ? fmtUsd(c.price) : "no price";
 
   return (
@@ -131,6 +131,7 @@ function CloseView({ c }: { c: CloseViewData }) {
               <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}><span style={{ fontSize: "12px", color: "#FC72FF" }}>Haircut vs NAV {fmtUsd(c.nav)}</span><span style={{ fontVariantNumeric: "tabular-nums", fontSize: "26px" }}>~{Math.round(c.haircutPct)}%</span></div>
             </div>
             <p style={{ margin: 0, fontSize: "13px", color: "#535353" }}>Today's raw result. Fathom publishes the median of the last {c.medianWindow} auctions.</p>
+            <span style={{ fontSize: "12px", color: "#535353" }}>NAV {fmtUsd(c.nav)} <SetByUs title={NAV_TITLE} /></span>
           </section>
         </div>
 

@@ -6,7 +6,8 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties } from "re
 import { useSearchParams } from "react-router";
 import { Header, Page } from "../components/Header";
 import { Slice, TxLine, type TxState } from "../components/State";
-import { DEMO } from "../config";
+import { DEMO, SET_BY_US } from "../config";
+import { DEX_TITLE, SetByUs } from "../components/SetByUs";
 import { demo, type DemoStep } from "../demo/api";
 import type { ReplayView } from "../data/types";
 import { useFathom } from "../data/useFathom";
@@ -18,7 +19,6 @@ const red = pill("#D93A3A", "#FDECEC", "#F5C2C2");
 const amber = pill("#B7791F", "#FFF6E0", "#F0D9A8");
 const box = (border: string, anim?: string): CSSProperties => ({ animation: anim ?? "none", flex: "1 1 480px", minWidth: 0, background: "#F9F9F9", border: `1px solid ${border}`, borderRadius: "20px", padding: "24px", display: "flex", flexDirection: "column", gap: "18px" });
 const txLink: CSSProperties = { fontSize: "12px", color: "#FC72FF" };
-const SCENARIO = { dex: 1.04 };
 
 export function Replay() {
   const { replay } = useFathom();
@@ -32,7 +32,7 @@ export function Replay() {
 
 function ReplayRoom({ r }: { r: ReplayView }) {
   const { refresh, liquidity } = useFathom();
-  const medianWindow = liquidity.status === "ready" ? liquidity.data.medianWindow : 7;
+  const medianWindow = liquidity.status === "ready" ? liquidity.data.medianWindow : null;
   const [params, setParams] = useSearchParams();
   const [s, setS] = useState(0);
   const [tx, setTx] = useState<TxState>({ status: "idle" });
@@ -40,10 +40,12 @@ function ReplayRoom({ r }: { r: ReplayView }) {
   const live = DEMO;
   const base = "USTRY";
   const a = r.assessment;
-  const factor = Number((r.pumpPrice / (live ? 1.04 : SCENARIO.dex)).toPrecision(2));
+  // The DEX starts from (and is reset to) the price we set in scripts/config.ts.
+  const dexStart = SET_BY_US.dexStart;
+  const factor = Number((r.pumpPrice / dexStart).toPrecision(2));
 
   // Numbers on screen: live reads in demo mode; the scenario otherwise.
-  const dexShown = live ? r.dexStart : s === 0 ? SCENARIO.dex : r.pumpPrice;
+  const dexShown = live ? r.dexStart : s === 0 ? dexStart : r.pumpPrice;
   const poolATvl = live ? r.poolATvl : s === 3 ? 0 : r.poolTvl;
   const dexValue = r.collateral * r.pumpPrice;
 
@@ -120,7 +122,7 @@ function ReplayRoom({ r }: { r: ReplayView }) {
     `Attacker walks away with the pool. ${base} was never worth ${fmtUsd(r.pumpPrice, 0)}.`,
   ];
   const bNotes = [
-    `Price is the ${medianWindow}-auction median, capped at NAV. Depth comes from locked buy orders.`,
+    `Price is the ${medianWindow ? `${medianWindow}-auction` : "recent-auction"} median, capped at NAV. Depth comes from locked buy orders.`,
     `DEX trade ignored. Fathom still says ${fmtUsd(r.fathomPrice)} with ${fmtInt(r.depth)} ${base} of depth.`,
     `Loan sized on ${fmtUsd(r.fathomPrice)} and capped by depth. Request too large.`,
     a.reasons.includes("DepthTooLow") ? "Depth too low · borrow rejected. Pool keeps its funds." : "Borrow rejected. Pool keeps its funds.",
@@ -142,6 +144,9 @@ function ReplayRoom({ r }: { r: ReplayView }) {
           <span style={{ fontSize: "12px", color: live ? "#40B66B" : "#B7791F" }}>
             {live ? "Live on testnet: every step is a real transaction; numbers are contract reads." : "Simulated replay: DEX and Pool A numbers are the scenario. Fathom and Pool B numbers are live reads. Open with ?demo to run it on testnet."}
           </span>
+          <span style={{ fontSize: "12px", color: "#535353" }}>
+            Attack: {fmtInt(r.collateral)} {base} as collateral, {fmtUsd(r.borrow, 0)} asked from each pool, DEX pushed to {fmtUsd(r.pumpPrice, 0)} <SetByUs what="attack scenario" />
+          </span>
         </div>
         <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", alignItems: "center" }}>
           <button type="button" disabled={busy || s === 3} onClick={() => void step(s)} style={{ background: "#FC72FF", color: "#FFFFFF", border: "none", borderRadius: "10px", padding: "14px 20px", fontSize: "15px", fontWeight: 600, minHeight: "48px", fontFamily: "inherit", cursor: "pointer", opacity: busy ? 0.6 : 1 }}>
@@ -160,12 +165,12 @@ function ReplayRoom({ r }: { r: ReplayView }) {
 
       {s >= 1 && (
         <div style={{ background: "#FFFFFF", border: "1px solid #F0F0F0", borderRadius: "20px", padding: "12px 16px", animation: "fadeUp .4s ease-out both" }}>
-          <svg viewBox="0 0 1240 140" role="img" aria-label={`${base} DEX price jumps from ${fmtUsd(SCENARIO.dex)} to ${fmtUsd(r.pumpPrice, 0)} on one trade`} style={{ width: "100%", height: "auto" }}>
+          <svg viewBox="0 0 1240 140" role="img" aria-label={`${base} DEX price jumps from ${fmtUsd(dexStart)} to ${fmtUsd(r.pumpPrice, 0)} on one trade`} style={{ width: "100%", height: "auto" }}>
             <line x1="40" y1="120" x2="1200" y2="120" stroke="#F0F0F0" />
             <path className="draw" style={{ "--len": 1400 } as CSSProperties} d="M40 116 L300 117 L520 115 L700 116 L720 14 L1200 14" fill="none" stroke="#E5484D" strokeWidth="3" />
             <circle className="pop" style={{ animationDelay: "1.2s" }} cx="720" cy="14" r="7" fill="#E5484D" />
             <circle className="ring" cx="720" cy="14" r="7" fill="none" stroke="#E5484D" strokeWidth="2" />
-            <text x="40" y="104" fontSize="13" fill="#7D7D7D">DEX price · {fmtUsd(SCENARIO.dex)}</text>
+            <text x="40" y="104" fontSize="13" fill="#7D7D7D">DEX price · {fmtUsd(dexStart)} · <tspan fill="#B7791F">demo feed (set by us)</tspan></text>
             <text className="fade" style={{ animationDelay: "1.3s" }} x="736" y="40" fontSize="15" fontWeight="600" fill="#D93A3A">{fmtUsd(r.pumpPrice, 0)} after one trade (real event: under $1 of hourly volume)</text>
           </svg>
           {links.pump?.link && <a href={links.pump.link} target="_blank" rel="noreferrer" style={txLink}>Pump transaction on stellar.expert</a>}
@@ -179,7 +184,7 @@ function ReplayRoom({ r }: { r: ReplayView }) {
             <span style={s === 0 ? green : s === 3 ? red : amber}>{s === 0 ? "Normal" : s === 3 ? "Drained" : "Price spike"}</span>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "16px" }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}><span style={{ fontSize: "12px", color: "#7D7D7D" }}>{base} price it sees</span>
+            <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}><span style={{ fontSize: "12px", color: "#7D7D7D" }}>{base} price it sees <SetByUs title={DEX_TITLE} /></span>
               <span style={{ display: "inline-block", transformOrigin: "left center", fontVariantNumeric: "tabular-nums", fontSize: "28px", color: s === 0 ? "#131313" : "#D93A3A", ...(s >= 1 ? { animation: "spike .6s ease-out" } : {}) }}>{fmtUsd(dexShown)}</span></div>
             <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}><span style={{ fontSize: "12px", color: "#7D7D7D" }}>Pool funds (TVL)</span><span style={{ fontVariantNumeric: "tabular-nums", fontSize: "28px" }}>{poolATvl < 1 ? "$0" : `$${fmtK(poolATvl)}`}</span></div>
           </div>

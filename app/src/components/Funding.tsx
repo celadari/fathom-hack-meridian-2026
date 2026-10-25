@@ -27,14 +27,15 @@ export function useAccount() {
 
 const btn = { background: "#FC72FF", color: "#FFFFFF", border: "none", borderRadius: "12px", padding: "10px 14px", fontSize: "14px", fontWeight: 535, fontFamily: "inherit", cursor: "pointer" } as const;
 
-export function FundingPanel({ account }: { account: ReturnType<typeof useAccount> }) {
+export function FundingPanel({ account, minDeposit }: { account: ReturnType<typeof useAccount>; minDeposit: number }) {
   const { signer } = useWallet();
   const [tx, setTx] = useState<TxState>({ status: "idle" });
   const s = account.status;
   if (!signer) return null;
   if (account.error) return <div role="alert" style={{ fontSize: "13px", color: "#D93A3A", padding: "8px 4px" }}>Could not read your account: {account.error}</div>;
   if (!s) return <div aria-busy="true" style={{ fontSize: "13px", color: "#7D7D7D", padding: "8px 4px" }}>Reading your account…</div>;
-  const needsTokens = s.balances.USDC < 10_000 && s.balances.USTRY < 10_000;
+  // Too little of both tokens for even the smallest fixed deposit (auction params).
+  const needsTokens = s.balances.USDC < minDeposit && s.balances.USTRY < minDeposit;
   if (s.exists && s.trusts.USTRY && s.trusts.USDC && !needsTokens) return null;
 
   const run = async (label: string, f: () => Promise<string | void>) => {

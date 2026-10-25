@@ -5,9 +5,15 @@ import { IDS, MOCK, num } from "../config";
 import { demo } from "../demo/api";
 import { onEvents, type FathomEvent } from "../stellar/events";
 import { useWallet } from "../stellar/wallet";
-import { MOCK as MOCK_VIEWS } from "./mock";
 import { loadAuction, loadClose, loadLiquidity, loadReplay } from "./testnet";
-import type { FathomData, Loadable, ReplayView } from "./types";
+import type { AuctionView, CloseView, FathomData, LiquidityView, Loadable, ReplayView } from "./types";
+
+declare global {
+  interface Window {
+    /** Injected by tools/compare.mjs only; the app ships no mock numbers. */
+    __FATHOM_MOCK__?: { auction: AuctionView; close: CloseView; liquidity: LiquidityView; replay: ReplayView };
+  }
+}
 
 const Ctx = createContext<FathomData | null>(null);
 const ready = <T,>(data: T): Loadable<T> => ({ status: "ready", data });
@@ -40,18 +46,22 @@ export function DataProvider({ children }: { children: ReactNode }) {
 }
 
 function MockProvider({ children }: { children: ReactNode }) {
-  const value = useMemo<FathomData>(() => ({
+  const value = useMemo<FathomData>(() => {
+    const m = window.__FATHOM_MOCK__;
+    const missing: Loadable<never> = { status: "error", error: "?mock shows data injected by tools/compare.mjs; none was injected" };
+    return {
     source: "mock",
-    auction: ready(MOCK_VIEWS.auction),
-    close: ready(MOCK_VIEWS.close),
-    liquidity: ready(MOCK_VIEWS.liquidity),
-    replay: ready(MOCK_VIEWS.replay),
+    auction: m ? ready(m.auction) : missing,
+    close: m ? ready(m.close) : missing,
+    liquidity: m ? ready(m.liquidity) : missing,
+    replay: m ? ready(m.replay) : missing,
     names: {},
     banner: null,
     dismissBanner: () => {},
     freshOrders: new Set(),
     refresh: () => {},
-  }), []);
+    };
+  }, []);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 

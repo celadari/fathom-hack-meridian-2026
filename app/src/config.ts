@@ -20,6 +20,21 @@ export const IDS = {
   issuer: env.VITE_ISSUER as string,
 };
 
+/**
+ * Values we set ourselves in scripts/config.ts (written to app/.env by deploy):
+ * the mock DEX feed's reset price and the attack replay's inputs. Shown in the UI
+ * as "demo feed (set by us)" / "attack scenario (set by us)", never as measurements.
+ */
+const scaled = (v: string | undefined) => (v ? Number(BigInt(v)) / 1e7 : NaN);
+export const SET_BY_US = {
+  dexStart: scaled(env.VITE_DEX_START),
+  attack: {
+    collateral: scaled(env.VITE_ATTACK_COLLATERAL),
+    borrow: scaled(env.VITE_ATTACK_BORROW),
+    pump: scaled(env.VITE_ATTACK_PUMP),
+  },
+};
+
 /** Flags survive in-app navigation (links drop the query string). */
 function flag(name: string): boolean {
   const key = `fathom:flag:${name}`;

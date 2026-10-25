@@ -38,6 +38,13 @@ export const CONFIG = {
     history_cap: 64,
   },
 
+  // The attack replay's inputs (scenario we chose, not measurements).
+  replay: {
+    collateral: 13_000n * UNIT, // USTRY the attacker posts
+    borrow: 1_000_000n * UNIT, // USDC asked from each pool
+    pump: 106n * UNIT, // DEX price after one trade (×100 the $1.06 NAV)
+  },
+
   pools: {
     ltv_bps: 7_500, // each pool's own choice
     cap_share_bps: 5_000, // Pool B caps total USTRY collateral at 50% of min depth

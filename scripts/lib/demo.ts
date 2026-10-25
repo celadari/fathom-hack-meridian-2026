@@ -246,9 +246,7 @@ export async function loopTick(log: (s: string) => void = console.log) {
 
 // ------------------------------------------------------------------ replay
 
-const COLLATERAL = 13_000n * UNIT;
-const BORROW = 1_000_000n * UNIT;
-const PUMP = 106n * UNIT;
+const { collateral: COLLATERAL, borrow: BORROW, pump: PUMP } = CONFIG.replay;
 
 export type ReplayRun = { at: number; steps: Partial<Record<"reset" | "pump" | "poolA" | "poolB", Step>>; assessment?: Record<string, unknown> };
 
