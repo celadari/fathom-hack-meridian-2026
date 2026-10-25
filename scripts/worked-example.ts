@@ -1,7 +1,9 @@
 // Run the worked example as a real auction on testnet:
 //   Alice buys 30,000 at <= $1.04 (standing)   Bob sells 20,000 at >= $1.02
 //   Dan   buys 10,000 at <= $1.03              Carol sells 15,000 at >= $1.04
-// Expected: clearing $1.04, 30,000 matched, Carol sells 10,000 of 15,000, Dan refunded.
+//   Eve   buys 24,800 at <= $1.03 (standing: stays open as depth, makes 5 orders)
+// Expected: clearing $1.04, 30,000 matched, Carol sells 10,000 of 15,000, Dan refunded,
+// and the oracle publishes $1.04 with 24,800 of depth.
 //
 //   npm run worked-example
 import { Asset, Keypair } from "@stellar/stellar-sdk";
@@ -17,6 +19,7 @@ const PLAN: Plan[] = [
   { name: "dan", side: Side.Buy, price: 10_300_000n, qty: 10_000n, standing: false },
   { name: "bob", side: Side.Sell, price: 10_200_000n, qty: 20_000n, standing: false },
   { name: "carol", side: Side.Sell, price: 10_400_000n, qty: 15_000n, standing: false },
+  { name: "eve", side: Side.Buy, price: 10_300_000n, qty: 24_800n, standing: true },
 ];
 
 async function main() {
@@ -89,7 +92,10 @@ async function main() {
   const settled = await write(adminAuction, "settle", { order_ids: a.to_settle });
   console.log(`  settled ${a.to_settle.length} orders  ${txLink(settled.hash)}`);
 
-  console.log(`\nClearing price $${fmt(r.price)} · matched ${fmt(r.matched)} USTRY · notional $${fmt(r.notional)} · ${r.order_count} orders · depth ${fmt(r.depth)}`);
+  const oracle = await client(d.oracle, admin);
+  const l = await read<Record<string, bigint>>(oracle, "liquidity", { asset: { tag: "Stellar", values: [d.ustry_sac] } });
+  console.log(`\nOracle: price $${fmt(l.price)} · NAV $${fmt(l.nav)} · haircut ${Number(l.haircut_bps) / 100}% · depth ${fmt(l.depth)} · status ${JSON.stringify(l.status)}`);
+  console.log(`Clearing price $${fmt(r.price)} · matched ${fmt(r.matched)} USTRY · notional $${fmt(r.notional)} · ${r.order_count} orders · depth ${fmt(r.depth)}`);
   const fills = await read<Array<Record<string, bigint>>>(adminAuction, "fills", { auction: r.auction });
   const after = await balances();
   for (const p of PLAN) {

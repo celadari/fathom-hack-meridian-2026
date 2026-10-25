@@ -1,0 +1,18 @@
+[package]
+name = "demo-pool-b"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+doctest = false
+
+[dependencies]
+soroban-sdk = { workspace = true }
+fathom-common = { path = "../../crates/fathom-common" }
+
+[dev-dependencies]
+soroban-sdk = { workspace = true, features = ["testutils"] }
+fathom-oracle = { path = "../fathom-oracle" }
+mock-nav = { path = "../mock-nav" }

@@ -1,51 +1,48 @@
 // Deploy Fathom's testnet demo environment.
 //
-//   npm run deploy               # idempotent: reuses what deployments/testnet.json already has
-//   npm run deploy -- --redeploy # deploy fresh contract instances (tokens are kept)
+//   npm run deploy    # idempotent
+//
+// Each contract is redeployed only when its fingerprint (WASM hash + constructor
+// args) changes. Constructor args include dependency ids, so redeploying the oracle
+// also redeploys Pool B. Wiring (oracle registry, auction → oracle) and pool funding
+// are re-applied every run.
 //
 // Writes contract ids to deployments/testnet.json (public, committed) and app/.env (gitignored).
+import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { Asset } from "@stellar/stellar-sdk";
+import { CONFIG } from "./config.js";
 import {
   NETWORK, PASSPHRASE, ROOT, RPC_URL, HORIZON_URL,
-  ensureIdentity, ensureTrustlines, readDeployment, stellar, topUp, writeDeployment,
+  Deployment, ensureIdentity, ensureTrustlines, readDeployment, stellar, topUp, writeDeployment,
 } from "./lib/stellar.js";
 
-// 7-decimal fixed point, shared by every price in the system.
-const NAV_USTRY = 10_600_000n; // $1.06
-const DEX_START = 10_400_000n; // $1.04
-const TREASURY = { USTRY: 10_000_000, USDC: 50_000_000 };
-const UNIT = 10_000_000n;
-
-// Price grid $0.90 .. $1.20 in $0.01 ticks.
-const GRID = { min: 9_000_000n, max: 12_000_000n, tick: 100_000n };
-
-// Fathom's fixed parameters (our own choices, not sourced). Demo timers are short;
-// production would run one auction per day.
-export const PARAMS = {
-  period_secs: 180,
-  reveal_secs: 60,
-  standing_secs: 7 * 86_400,
-  median_window: 7,
-  depth_floor_bps: 500, // depth counts standing bids at most 5% below NAV
-  cap_share_bps: 5_000, // pools cap borrowing at 50% of min depth
-  min_notional: (10_000n * UNIT).toString(), // no price below $10k notional...
-  min_orders: 5, // ...or fewer than 5 orders
-  penalty_bps: 100, // unrevealed orders lose 1% of their deposit
-  deposit_sizes: [10_000n, 50_000n, 250_000n].map((n) => (n * UNIT).toString()),
-  demo: true,
-};
-
-const redeploy = process.argv.includes("--redeploy");
 const wasm = (name: string) => resolve(ROOT, `target/wasm32v1-none/release/${name}.wasm`);
 const net = ["--network", NETWORK];
+const json = (v: unknown) => JSON.stringify(v, (_, x) => (typeof x === "bigint" ? x.toString() : x));
+/** CLI flags: scalars bare, structs/enums as JSON (i128 inside JSON as strings). */
+const flags = (args: Record<string, unknown>) =>
+  Object.entries(args).flatMap(([k, v]) => [`--${k}`, typeof v === "object" ? json(v) : String(v)]);
 
-function deployContract(alias: string, file: string, ctorArgs: string[]): string {
-  console.log(`  deploying ${alias}`);
-  const out = stellar("contract", "deploy", "--wasm", wasm(file), "--source", "fathom-admin", ...net, "--alias", alias, "--", ...ctorArgs);
-  return out.split("\n").pop()!;
+/** Deploy `file` under `key` unless the same code was already deployed with the same args. */
+function ensureContract(d: Deployment, key: string, file: string, args: Record<string, unknown>) {
+  const ctor = flags(args);
+  const wasmHash = createHash("sha256").update(readFileSync(wasm(file))).digest("hex");
+  const fingerprint = createHash("sha256").update(wasmHash + json(ctor)).digest("hex").slice(0, 16);
+  if (d[key] && d[`${key}_fp`] === fingerprint) {
+    console.log(`  ${key} unchanged`);
+    return;
+  }
+  console.log(`  deploying ${key}`);
+  const out = stellar("contract", "deploy", "--wasm", wasm(file), "--source", "fathom-admin", ...net, "--alias", key, "--", ...ctor);
+  d[key] = out.split("\n").pop()!;
+  d[`${key}_fp`] = fingerprint;
+}
+
+function invoke(id: string, fn: string, args: Record<string, unknown> = {}, send = true): string {
+  return stellar("contract", "invoke", "--id", id, "--source", "fathom-admin", ...net, "--send", send ? "yes" : "no", "--", fn, ...flags(args));
 }
 
 /** Wrap a classic asset in its Stellar Asset Contract; the id is deterministic, so this is idempotent. */
@@ -58,6 +55,14 @@ function deploySac(asset: Asset): string {
     console.log(`  SAC for ${asset.code} already exists`);
   }
   return stellar("contract", "id", "asset", "--asset", id, ...net);
+}
+
+/** Top a contract's balance of `sac` up to `target` from the admin treasury. */
+function fundContract(sac: string, contract: string, admin: string, target: bigint) {
+  const have = BigInt(JSON.parse(invoke(sac, "balance", { id: contract }, false)));
+  if (have >= target) return;
+  invoke(sac, "transfer", { from: admin, to: contract, amount: (target - have).toString() });
+  console.log(`  funded ${contract.slice(0, 6)}… with ${(target - have) / 10_000_000n} USDC`);
 }
 
 async function main() {
@@ -73,33 +78,47 @@ async function main() {
   const ustry = new Asset("USTRY", issuer.publicKey());
   const usdc = new Asset("USDC", issuer.publicKey());
   await ensureTrustlines(admin, [ustry, usdc]);
-  await topUp(issuer, admin.publicKey(), ustry, TREASURY.USTRY);
-  await topUp(issuer, admin.publicKey(), usdc, TREASURY.USDC);
+  await topUp(issuer, admin.publicKey(), ustry, CONFIG.treasury.USTRY);
+  await topUp(issuer, admin.publicKey(), usdc, CONFIG.treasury.USDC);
   d.ustry_sac = deploySac(ustry);
   d.usdc_sac = deploySac(usdc);
+  const ustryAsset = { Stellar: d.ustry_sac };
 
   console.log("3. build contracts");
   execFileSync("stellar", ["contract", "build"], { cwd: ROOT, stdio: "inherit" });
 
-  console.log("4. mock feeds");
-  if (redeploy || !d.mock_nav) d.mock_nav = deployContract("mock_nav", "mock_nav", ["--admin", d.admin, "--nav", NAV_USTRY.toString()]);
-  if (redeploy || !d.mock_dex_price) d.mock_dex_price = deployContract("mock_dex_price", "mock_dex_price", ["--price", DEX_START.toString()]);
-
-  console.log("5. auction");
-  if (redeploy || !d.auction) {
-    d.auction = deployContract("fathom_auction", "fathom_auction", [
-      "--admin", d.admin,
-      "--base_token", d.ustry_sac,
-      "--quote_token", d.usdc_sac,
-      "--nav_feed", d.mock_nav,
-      "--grid_min", GRID.min.toString(),
-      "--grid_max", GRID.max.toString(),
-      "--tick", GRID.tick.toString(),
-      "--params", JSON.stringify(PARAMS),
-    ]);
-  }
-
+  console.log("4. contracts");
+  ensureContract(d, "mock_nav", "mock_nav", { admin: d.admin, nav: CONFIG.ustry.nav });
+  ensureContract(d, "mock_dex_price", "mock_dex_price", { price: CONFIG.ustry.dexStart });
+  const { grid, params } = CONFIG.auction;
+  ensureContract(d, "auction", "fathom_auction", {
+    admin: d.admin, base_token: d.ustry_sac, quote_token: d.usdc_sac, nav_feed: d.mock_nav,
+    grid_min: grid.min, grid_max: grid.max, tick: grid.tick, params,
+  });
+  ensureContract(d, "oracle", "fathom_oracle", { admin: d.admin, base: { Stellar: d.usdc_sac }, params: CONFIG.oracle });
+  const { ltv_bps, cap_share_bps, tvl } = CONFIG.pools;
+  ensureContract(d, "pool_a", "demo_pool_a", {
+    collateral_token: d.ustry_sac, debt_token: d.usdc_sac, price_feed: d.mock_dex_price, ltv_bps,
+  });
+  ensureContract(d, "pool_b", "demo_pool_b", {
+    collateral_token: d.ustry_sac, debt_token: d.usdc_sac, oracle: d.oracle, asset: ustryAsset, ltv_bps, cap_share_bps,
+  });
   writeDeployment(d);
+
+  console.log("5. wiring");
+  const reg = JSON.parse(invoke(d.oracle, "asset_config", { asset: ustryAsset }, false) || "null");
+  if (reg?.auction !== d.auction || reg?.nav_feed !== d.mock_nav) {
+    invoke(d.oracle, "register_asset", { asset: ustryAsset, auction: d.auction, nav_feed: JSON.stringify(d.mock_nav) }); // Option<Address>
+    console.log("  oracle: registered USTRY → auction");
+  }
+  const cfg = JSON.parse(invoke(d.auction, "config", {}, false));
+  if (cfg.oracle !== d.oracle) {
+    invoke(d.auction, "set_oracle", { oracle: d.oracle });
+    console.log("  auction: pushes to oracle");
+  }
+  fundContract(d.usdc_sac, d.pool_a, d.admin, tvl);
+  fundContract(d.usdc_sac, d.pool_b, d.admin, tvl);
+
   writeFileSync(
     resolve(ROOT, "app/.env"),
     [
@@ -112,13 +131,15 @@ async function main() {
       `VITE_MOCK_NAV=${d.mock_nav}`,
       `VITE_MOCK_DEX_PRICE=${d.mock_dex_price}`,
       `VITE_AUCTION=${d.auction}`,
+      `VITE_ORACLE=${d.oracle}`,
+      `VITE_POOL_A=${d.pool_a}`,
+      `VITE_POOL_B=${d.pool_b}`,
       "",
     ].join("\n"),
   );
 
   console.log("\nDeployed:");
-  console.table(d);
-  console.log(`\nCheck: stellar contract invoke --id ${d.mock_nav} --network testnet --source fathom-admin -- nav`);
+  console.table(Object.fromEntries(Object.entries(d).filter(([k]) => !k.endsWith("_fp"))));
 }
 
 main().catch((e) => {

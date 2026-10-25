@@ -29,11 +29,13 @@ cargo test                     # contract unit tests
 cd scripts && npm install
 npm run deploy                 # creates CLI identities fathom-admin / fathom-issuer, tokens, SACs, contracts
 npm run worked-example         # runs the worked example as a real auction on testnet, prints tx links
+npm run replay                 # attack replay: pump DEX ×100, drain Pool A, Pool B rejects
 ```
 
-`deploy` is idempotent. It writes public contract ids to `deployments/testnet.json` and the
-app config to `app/.env` (gitignored). Keys stay in the Stellar CLI keystore, never in the repo.
-Use `npm run deploy -- --redeploy` to get fresh contract instances.
+`deploy` is idempotent: a contract is redeployed only when its WASM or constructor arguments change
+(dependency ids are arguments, so changes cascade). It writes public contract ids to
+`deployments/testnet.json` and the app config to `app/.env` (gitignored). Keys stay in the Stellar
+CLI keystore, never in the repo. All tunable parameters live in `scripts/config.ts`.
 
 ## How an auction runs (`contracts/fathom-auction`)
 
@@ -60,6 +62,32 @@ storage). Clients re-simulate and resend FAILED transactions (`scripts/lib/fatho
 
 Demo mode: `fast_forward()` (admin) ends the current commit window, or the reveal window, immediately.
 
+## Oracle (`contracts/fathom-oracle`)
+
+A separate contract so more assets can be added without redeploying. The admin registers each asset
+with the one auction contract allowed to report for it: `register_asset(asset, auction, nav_feed)`.
+After each close, that auction pushes one `AuctionReport` (`record`). The oracle computes everything
+then and stores it per asset; reads never call another contract.
+
+| Read | Returns |
+|---|---|
+| `lastprice(asset)` (SEP-40) | median of the last 7 clearing prices, capped at NAV. `None` if the last auction had < $10k notional or < 5 orders |
+| `price`, `prices`, `base`, `assets`, `decimals`, `resolution` (SEP-40) | published price history, newest first for `prices` |
+| `depth(asset)` | open standing-buy quantity priced ≥ NAV − 5% |
+| `liquidity(asset)` | price, NAV, haircut, depth, lowest depth over the window, order count, notional, status |
+
+Even-length median (fewer than 7 auctions so far) takes the lower middle value. Assets without a NAV
+feed use the median itself, with no haircut.
+
+## Demo pools
+
+- **Pool A** (`demo-pool-a`) values USTRY at the thin DEX price. One trade pumps it ×100 and the pool is drained.
+- **Pool B** (`demo-pool-b`) values USTRY at Fathom `lastprice` × LTV and rejects any borrow that would take
+  total USTRY collateral above 50% of Fathom's lowest depth over the window (`Error #2, DepthTooLow`).
+
+Both use LTV 75% (each pool's own choice) and share error codes: 1 no price, 2 depth too low,
+3 not enough collateral, 4 pool empty, 5 bad amount.
+
 ## Conventions
 
 All prices are 7-decimal fixed point (`$1.06 = 10_600_000`), like Stellar token amounts.
@@ -69,6 +97,11 @@ All prices are 7-decimal fixed point (`$1.06 = 10_600_000`), like Stellar token 
 - `contracts/mock-nav`: admin-set NAV feed for USTRY ($1.06)
 - `contracts/mock-dex-price`: thin "last trade" price that anyone can move (used by the attack replay)
 - `contracts/fathom-auction`: sealed orders, reveal, clearing, settlement, standing orders
+- `contracts/fathom-oracle`: SEP-40 price + depth per asset, fed by auction pushes
+- `contracts/demo-pool-a`, `contracts/demo-pool-b`: naive lender vs Fathom lender
+- `crates/fathom-common`: types and client interfaces shared by the contracts
+- `scripts/config.ts`: every parameter in one place
 - `scripts/deploy.ts`: testnet deployment
-- `scripts/worked-example.ts`: the worked example, end to end on testnet
+- `scripts/worked-example.ts`: the worked example (+ Eve's standing bid), end to end on testnet
+- `scripts/replay-attack.ts`: the YieldBlox-style replay
 - `designs/`: approved screen designs (reference for the React port)

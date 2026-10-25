@@ -12,7 +12,9 @@ doctest = false
 soroban-sdk = { workspace = true, features = ["alloc"] }
 # Poseidon2 over BN254 matching noir-lang/poseidon (same sponge, IV = len << 64).
 soroban-poseidon = "28.0.0"
+fathom-common = { path = "../../crates/fathom-common" }
 
 [dev-dependencies]
 soroban-sdk = { workspace = true, features = ["testutils", "alloc"] }
 mock-nav = { path = "../mock-nav" }
+fathom-oracle = { path = "../fathom-oracle" }

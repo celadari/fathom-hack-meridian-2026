@@ -23,18 +23,13 @@ mod test;
 use alloc::vec::Vec as AVec;
 use clearing::{clear, Entry};
 use events::*;
-use soroban_sdk::{contract, contractclient, contractimpl, token, Address, BytesN, Env, Vec};
+use fathom_common::{Asset, AuctionReport, NavClient, OracleClient};
+use soroban_sdk::{contract, contractimpl, token, Address, BytesN, Env, Vec};
 pub use types::*;
 
 const DAY_LEDGERS: u32 = 17_280;
 const TTL_THRESHOLD: u32 = 7 * DAY_LEDGERS;
 const TTL_EXTEND: u32 = 30 * DAY_LEDGERS;
-
-/// The NAV feed (contracts/mock-nav on testnet).
-#[contractclient(name = "NavClient")]
-pub trait NavFeed {
-    fn nav(env: Env) -> i128;
-}
 
 #[contract]
 pub struct FathomAuction;
@@ -62,7 +57,7 @@ impl FathomAuction {
             return Err(Error::BadConfig);
         }
         check_params(&params)?;
-        let cfg = Config { admin, base_token, quote_token, nav_feed, grid_min, grid_max, tick };
+        let cfg = Config { admin, base_token, quote_token, nav_feed, oracle: None, grid_min, grid_max, tick };
         let now = env.ledger().timestamp();
         let first = Auction {
             id: 1,
@@ -342,6 +337,21 @@ impl FathomAuction {
         }
         st.extend_ttl(TTL_THRESHOLD, TTL_EXTEND);
         AuctionClosed { auction: id, result: res.clone() }.publish(&env);
+
+        // 5. Push to the oracle; its reads stay local.
+        if let Some(oracle) = &cfg.oracle {
+            let report = AuctionReport {
+                auction: id,
+                timestamp: now,
+                cleared: res.cleared,
+                price,
+                matched,
+                notional: res.notional,
+                order_count,
+                depth,
+            };
+            OracleClient::new(&env, oracle).record(&Asset::Stellar(cfg.base_token.clone()), &report);
+        }
         Ok(res)
     }
 
@@ -410,6 +420,14 @@ impl FathomAuction {
         put(&env, &DataKey::Auction(id), &a);
         AuctionAdvanced { auction: id, commit_end: a.commit_end, reveal_end: a.reveal_end }.publish(&env);
         Ok(a)
+    }
+
+    /// Point closes at the Fathom oracle (it must have registered this contract for the base token).
+    pub fn set_oracle(env: Env, oracle: Address) {
+        let mut cfg = config(&env);
+        cfg.admin.require_auth();
+        cfg.oracle = Some(oracle);
+        env.storage().instance().set(&DataKey::Config, &cfg);
     }
 
     pub fn set_params(env: Env, params: Params) -> Result<(), Error> {
@@ -515,7 +533,7 @@ impl FathomAuction {
 
 fn check_params(p: &Params) -> Result<(), Error> {
     let sizes_ok = !p.deposit_sizes.is_empty() && p.deposit_sizes.iter().all(|s| s > 0);
-    if p.period_secs == 0 || p.median_window == 0 || p.depth_floor_bps > 10_000 || p.penalty_bps > 10_000 || !sizes_ok {
+    if p.period_secs == 0 || p.depth_floor_bps > 10_000 || p.penalty_bps > 10_000 || !sizes_ok {
         return Err(Error::BadConfig);
     }
     Ok(())

@@ -5,6 +5,7 @@
   "scripts": {
     "deploy": "tsx deploy.ts",
     "worked-example": "tsx worked-example.ts",
+    "replay": "tsx replay-attack.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

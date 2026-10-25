@@ -27,11 +27,7 @@ fn params(env: &Env) -> Params {
         period_secs: PERIOD,
         reveal_secs: REVEAL,
         standing_secs: 7 * 86_400,
-        median_window: 7,
         depth_floor_bps: 500,
-        cap_share_bps: 5_000,
-        min_notional: 10_000 * U,
-        min_orders: 5,
         penalty_bps: 100,
         deposit_sizes: vec![env, 10_000 * U, 50_000 * U, 250_000 * U],
         demo: true,
@@ -386,4 +382,47 @@ fn close_with_a_busy_book_fits_testnet_limits() {
     assert_eq!(t.auction.settle(&pending.slice(0..8)), 8);
     std::println!("settle, 8 orders: cpu={} mem={}", budget.cpu_instruction_cost(), budget.memory_bytes_cost());
     assert_eq!(t.auction.settle(&pending.slice(0..8)), 0); // idempotent
+}
+
+#[test]
+fn close_pushes_price_and_depth_to_the_oracle() {
+    use fathom_common::{Asset, LiquidityStatus};
+    use fathom_oracle::{FathomOracle, FathomOracleClient, OracleParams};
+
+    let t = setup();
+    let cfg = t.auction.config();
+    let oracle_params = OracleParams {
+        resolution: PERIOD as u32,
+        median_window: 7,
+        min_notional: 10_000 * U,
+        min_orders: 5,
+        depth_window_secs: 3_600,
+        history_cap: 64,
+    };
+    let oracle_id = t.env.register(FathomOracle, (&t.admin, &Asset::Stellar(cfg.quote_token.clone()), &oracle_params));
+    let oracle = FathomOracleClient::new(&t.env, &oracle_id);
+    let ustry = Asset::Stellar(cfg.base_token.clone());
+    oracle.register_asset(&ustry, &t.auction.address, &Some(cfg.nav_feed.clone()));
+    t.auction.set_oracle(&oracle_id);
+
+    // The worked example, plus Eve's standing bid at $1.03 (below the clearing price, so it stays open).
+    let d = 50_000 * U;
+    let orders = [
+        t.seal(&t.user(), Side::Buy, 4, 30_000 * U, d, true),
+        t.seal(&t.user(), Side::Buy, 3, 10_000 * U, d, false),
+        t.seal(&t.user(), Side::Sell, 2, 20_000 * U, d, false),
+        t.seal(&t.user(), Side::Sell, 4, 15_000 * U, d, false),
+        t.seal(&t.user(), Side::Buy, 3, 25_000 * U, d, true),
+    ];
+    t.to_reveal();
+    orders.iter().for_each(|o| t.reveal(o));
+    t.to_close();
+    t.close();
+
+    let l = oracle.liquidity(&ustry).unwrap();
+    assert_eq!(l.status, LiquidityStatus::Ok);
+    assert_eq!((l.price, l.nav), (104 * U / 100, 106 * U / 100));
+    assert_eq!(l.haircut_bps, 188); // (1.06 − 1.04) / 1.06
+    assert_eq!((l.depth, l.order_count), (25_000 * U, 5));
+    assert_eq!(oracle.lastprice(&ustry).unwrap().price, 104 * U / 100);
 }

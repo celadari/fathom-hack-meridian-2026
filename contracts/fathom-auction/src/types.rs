@@ -1,8 +1,6 @@
 use soroban_sdk::{contracterror, contracttype, Address, BytesN, Vec};
 
-/// Fixed-point scale for prices: 7 decimals, like Stellar token amounts.
-pub const PRICE_SCALE: i128 = 10_000_000;
-pub const BPS: i128 = 10_000;
+pub use fathom_common::{BPS, PRICE_SCALE};
 
 #[contracterror]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
@@ -47,18 +45,15 @@ pub enum OrderStatus {
     Done = 2,
 }
 
-/// Tunable parameters. Our own choices for the demo, kept in one place.
+/// Auction parameters. Our own choices; the oracle and pools hold the others
+/// (median window, minimum liquidity, cap share). scripts/deploy.ts sets them all.
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Params {
     pub period_secs: u64,
     pub reveal_secs: u64,
     pub standing_secs: u64,
-    pub median_window: u32,
     pub depth_floor_bps: u32,
-    pub cap_share_bps: u32,
-    pub min_notional: i128,
-    pub min_orders: u32,
     pub penalty_bps: u32,
     /// Allowed deposit amounts (base units), so escrow does not leak exact size.
     pub deposit_sizes: Vec<i128>,
@@ -73,6 +68,8 @@ pub struct Config {
     pub base_token: Address,
     pub quote_token: Address,
     pub nav_feed: Address,
+    /// Fathom oracle to push each result to (set after the oracle registers this auction).
+    pub oracle: Option<Address>,
     pub grid_min: i128,
     pub grid_max: i128,
     pub tick: i128,
