@@ -745,6 +745,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "40404c3f5f511ec4da6fe866ddf6a717c309fdbb69fbbad7b0f3edab8f2e835f"
 
 [[package]]
+name = "fathom-auction"
+version = "0.1.0"
+dependencies = [
+ "mock-nav",
+ "soroban-poseidon",
+ "soroban-sdk",
+]
+
+[[package]]
 name = "ff"
 version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1637,6 +1646,15 @@ dependencies = [
  "soroban-env-common",
  "soroban-env-host",
  "thiserror 1.0.69",
+]
+
+[[package]]
+name = "soroban-poseidon"
+version = "28.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9d3c971964bbff3b7f716b251e3cd8caa71ab4fbe33aa8fc845570dcdbe97582"
+dependencies = [
+ "soroban-sdk",
 ]
 
 [[package]]

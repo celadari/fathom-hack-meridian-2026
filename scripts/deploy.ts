@@ -17,6 +17,26 @@ import {
 const NAV_USTRY = 10_600_000n; // $1.06
 const DEX_START = 10_400_000n; // $1.04
 const TREASURY = { USTRY: 10_000_000, USDC: 50_000_000 };
+const UNIT = 10_000_000n;
+
+// Price grid $0.90 .. $1.20 in $0.01 ticks.
+const GRID = { min: 9_000_000n, max: 12_000_000n, tick: 100_000n };
+
+// Fathom's fixed parameters (our own choices, not sourced). Demo timers are short;
+// production would run one auction per day.
+export const PARAMS = {
+  period_secs: 180,
+  reveal_secs: 60,
+  standing_secs: 7 * 86_400,
+  median_window: 7,
+  depth_floor_bps: 500, // depth counts standing bids at most 5% below NAV
+  cap_share_bps: 5_000, // pools cap borrowing at 50% of min depth
+  min_notional: (10_000n * UNIT).toString(), // no price below $10k notional...
+  min_orders: 5, // ...or fewer than 5 orders
+  penalty_bps: 100, // unrevealed orders lose 1% of their deposit
+  deposit_sizes: [10_000n, 50_000n, 250_000n].map((n) => (n * UNIT).toString()),
+  demo: true,
+};
 
 const redeploy = process.argv.includes("--redeploy");
 const wasm = (name: string) => resolve(ROOT, `target/wasm32v1-none/release/${name}.wasm`);
@@ -65,6 +85,20 @@ async function main() {
   if (redeploy || !d.mock_nav) d.mock_nav = deployContract("mock_nav", "mock_nav", ["--admin", d.admin, "--nav", NAV_USTRY.toString()]);
   if (redeploy || !d.mock_dex_price) d.mock_dex_price = deployContract("mock_dex_price", "mock_dex_price", ["--price", DEX_START.toString()]);
 
+  console.log("5. auction");
+  if (redeploy || !d.auction) {
+    d.auction = deployContract("fathom_auction", "fathom_auction", [
+      "--admin", d.admin,
+      "--base_token", d.ustry_sac,
+      "--quote_token", d.usdc_sac,
+      "--nav_feed", d.mock_nav,
+      "--grid_min", GRID.min.toString(),
+      "--grid_max", GRID.max.toString(),
+      "--tick", GRID.tick.toString(),
+      "--params", JSON.stringify(PARAMS),
+    ]);
+  }
+
   writeDeployment(d);
   writeFileSync(
     resolve(ROOT, "app/.env"),
@@ -77,6 +111,7 @@ async function main() {
       `VITE_USDC_SAC=${d.usdc_sac}`,
       `VITE_MOCK_NAV=${d.mock_nav}`,
       `VITE_MOCK_DEX_PRICE=${d.mock_dex_price}`,
+      `VITE_AUCTION=${d.auction}`,
       "",
     ].join("\n"),
   );

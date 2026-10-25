@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "deploy": "tsx deploy.ts",
+    "worked-example": "tsx worked-example.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
