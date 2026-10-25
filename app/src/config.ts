@@ -49,6 +49,28 @@ function flag(name: string): boolean {
 
 /** ?demo: demo controls (Next auction, Seed bots, Run replay) and the demo wallet. */
 export const DEMO = flag("demo");
+
+/** Demo server base URL: "/demo" through the Vite proxy locally, the hosted server in production. */
+export const DEMO_API = ((env.VITE_DEMO_API as string | undefined) ?? "").replace(/\/$/, "") || "/demo";
+
+/** ?demo=<token> stores the hosted demo server's token for this browser session. */
+export function demoToken(): string {
+  const key = "fathom:demo-token";
+  const fromUrl = new URLSearchParams(location.search).get("demo");
+  try {
+    if (fromUrl) sessionStorage.setItem(key, fromUrl);
+    return sessionStorage.getItem(key) ?? "";
+  } catch {
+    return fromUrl ?? "";
+  }
+}
+export function setDemoToken(token: string) {
+  try {
+    sessionStorage.setItem("fathom:demo-token", token);
+  } catch {
+    /* private mode */
+  }
+}
 /** ?mock: render mock data (screenshot comparison with the designs). */
 export const MOCK = flag("mock");
 

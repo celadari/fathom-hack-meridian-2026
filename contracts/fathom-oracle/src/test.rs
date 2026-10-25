@@ -153,6 +153,10 @@ fn sep40_reads() {
     assert_eq!(t.oracle.price(&t.ustry, &a.timestamp).unwrap().price, cents(103));
     assert_eq!(t.oracle.price(&t.ustry, &(b.timestamp - 1)).unwrap().price, cents(103));
     assert_eq!(t.oracle.price(&t.ustry, &(a.timestamp - 1)), None);
+    // Blend's oracle-aggregator reads the last round's timestamp, then price(asset, that timestamp).
+    assert_eq!(t.oracle.last_timestamp(), b.timestamp);
+    // Published price there is the median of [1.03, 1.05]: the lower middle, $1.03.
+    assert_eq!(t.oracle.price(&t.ustry, &t.oracle.last_timestamp()).unwrap().price, cents(103));
 }
 
 #[test]

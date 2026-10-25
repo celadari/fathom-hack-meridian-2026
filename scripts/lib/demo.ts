@@ -12,7 +12,8 @@ import { ensureIdentity, ensureTrustlines, horizon, readDeployment, ROOT, topUp,
 export const BOTS = ["alice", "bob", "carol", "dan", "eve", "frank", "grace", "heidi"] as const;
 const BOT_FUNDS = 400_000;
 const DEPTH_TARGET = 24_800n;
-const STATE_DIR = resolve(ROOT, "scripts/.state");
+// Bot openings and the last replay. On the hosted server this points at a persistent volume.
+const STATE_DIR = process.env.FATHOM_STATE_DIR ?? resolve(ROOT, "scripts/.state");
 const OPENINGS = resolve(STATE_DIR, "openings.json");
 const LAST_REPLAY = resolve(STATE_DIR, "last-replay.json");
 

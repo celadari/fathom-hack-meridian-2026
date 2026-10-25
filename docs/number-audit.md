@@ -22,8 +22,9 @@ then a read of each screen. Contract names: `auction` = fathom-auction, `oracle`
 
 | Element | Shown | Source |
 |---|---|---|
-| Countdown | Closes in 00:02:14 | computed: `auction.current_auction().commit_end` − browser clock |
-| Quantity, limit price | 30,000 · 1.040 / 1.020 | hard-coded form defaults (editable inputs) |
+| Countdown | Closes in 00:02:14 | computed: `auction.current_auction().commit_end` − ledger time (latest ledger close time from RPC `getEvents`) |
+| Quantity | 30,000 · "example quantity, edit it" | hard-coded form default, labelled |
+| Limit price | 1.040 (buy) / 1.030 (sell) · "from Fathom price" | `oracle.liquidity(USTRY).price` (sell: minus one `auction.config().tick`); empty if no price is published |
 | NAV in limit line | NAV $1.06 · demo feed (set by us) | `oracle.liquidity(USTRY).nav`, recorded from `mock-nav.nav()` at the last close |
 | You lock | 50,000 USDC | computed: smallest `auction.params().deposit_sizes` ≥ qty × price (buy) or qty (sell) |
 | Too-large message | largest deposit (250,000) | `auction.params().deposit_sizes` |
@@ -33,10 +34,11 @@ then a read of each screen. Contract names: `auction` = fathom-auction, `oracle`
 | Seal panel order | Buy 30,000 | user input |
 | Seal panel fingerprint | 0x0139…e4e0 | computed in the browser: Poseidon2 commitment (bb.js) |
 | Seal panel lock line | 50,000 USDC locked for 7 days | computed deposit + `auction.params().standing_secs`; link = `place_order` tx hash |
-| Hero surface price, "last clearing" | $1.04 | `auction.last_result().price` (shown only if it cleared) |
+| Hero surface price | Surface price $1.04 | `oracle.liquidity(USTRY).price` when status is Ok (Fathom's published price) |
+| "last clearing" | $1.05 | `auction.last_result().price` (raw last auction, shown only if it cleared) |
 | Hero depth line, Depth tile | 24.8K deep | `oracle.liquidity(USTRY).depth` |
-| Hero ruler ticks | 10K / 20K / 30K | computed scale from depth |
-| Hero envelopes | up to 5 | computed: min(5, sealed orders) (decoration) |
+| Hero ruler ticks | 10K / 20K / 30K · "USTRY depth" | computed scale from depth, axis titled |
+| Hero envelopes | one per sealed order, max 5 | `auction.orders_in(current)` sealed count; caption "N sealed, funded orders in auction #N · positions are decorative" |
 | Auction title | Auction #6 · USTRY / USDC | `auction.current_auction().id`; asset codes hard-coded labels |
 | Haircut tile | 1.9% | `oracle.liquidity(USTRY).haircut_bps` |
 | Sealed orders tile | 7 | computed: `auction.orders_in(current)` with status Sealed |
@@ -59,7 +61,7 @@ then a read of each screen. Contract names: `auction` = fathom-auction, `oracle`
 | Headline price | Everyone trades at $1.04 | `auction.last_result().price` |
 | Curve price axis | $1.01 … $1.07 | computed: `auction.fills(id)[].price_tick` × `auction.config().tick` + `grid_min` |
 | Curves | demand / supply steps | computed from `auction.fills(id)` (side, limit, qty) |
-| Curve quantity axis | 0 / 50k / 100k | computed scale from those quantities |
+| Curve quantity axis | 0 / 50k / 100k · "USTRY, cumulative" | computed scale from those quantities, axis titled |
 | Cross label | $1.04 · 22,000 matched | `auction.last_result().price`, `.matched` |
 | Result: price, matched, orders | $1.04 · 22,000 · 9 | `auction.last_result()` (price, matched, order_count) |
 | Result: haircut | ~2% | computed: (nav − price) / nav from `auction.last_result()` |
@@ -134,3 +136,15 @@ then a read of each screen. Contract names: `auction` = fathom-auction, `oracle`
 - The mock NAV and mock DEX price are tagged "demo feed (set by us)" wherever they appear.
 - `mock.ts` moved out of `app/src` to `app/tools/mock-views.mjs`; `tools/compare.mjs` injects it for
   `?mock`. Nothing in `app/src` imports mock data and the production bundle contains none.
+
+## Fixed after the follow-up checks
+
+- **Surface price** read the raw last clearing; it now shows Fathom's published (oracle) price.
+- **Envelopes**: with no sealed orders the hero still drew 5; it now draws one per sealed order (max 5)
+  and says the positions are decorative.
+- **Countdowns** used the browser clock; they now use ledger time from RPC.
+- **Real-event facts** have sources (Halborn, Protos, Rekt) in a replay footnote, a tooltip and the README.
+- **Independent review** (a fresh agent with only the running app and the rule, tracing numbers through
+  the app's RPC calls) found: the prefilled quantity and limit prices were unlabelled defaults, and two
+  chart axes were unlabelled scales. Prices now default to the oracle price ("from Fathom price"), the
+  quantity says "example quantity, edit it", and both axes have titles.

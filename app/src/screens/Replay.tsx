@@ -19,6 +19,14 @@ const red = pill("#D93A3A", "#FDECEC", "#F5C2C2");
 const amber = pill("#B7791F", "#FFF6E0", "#F0D9A8");
 const box = (border: string, anim?: string): CSSProperties => ({ animation: anim ?? "none", flex: "1 1 480px", minWidth: 0, background: "#F9F9F9", border: `1px solid ${border}`, borderRadius: "20px", padding: "24px", display: "flex", flexDirection: "column", gap: "18px" });
 const txLink: CSSProperties = { fontSize: "12px", color: "#FC72FF" };
+const src: CSSProperties = { color: "#535353" };
+/** Sources for the real-event facts (read 2026-10-26). */
+const SOURCES = {
+  halborn: "https://www.halborn.com/blog/post/explained-the-yieldblox-hack-february-2026",
+  protos: "https://protos.com/yieldblox-lending-pool-hit-by-10m-hack-on-stellar/",
+  rekt: "https://rekt.news/yieldblox-rekt",
+};
+const REAL_EVENT_NOTE = "YieldBlox DAO pool on Blend V2, 22 Feb 2026 00:25 UTC. ~$10.2M drained (Halborn, Protos; Rekt: $10.97M); $7.2M frozen by Tier-1 validators (Halborn; Protos: 48M XLM ≈ $7.5M).";
 
 export function Replay() {
   const { replay } = useFathom();
@@ -132,14 +140,14 @@ function ReplayRoom({ r }: { r: ReplayView }) {
     a.reasons.includes("InsufficientCollateral") &&
       `${fmtInt(a.collateral)} ${base} is worth ${fmtUsd(a.collateralValue, 0)} at the Fathom price, not ${fmtUsd(dexValue, 0)} at the DEX price. Max loan ${fmtUsd(a.maxLoan, 0)} vs ${fmtUsd(a.requested, 0)} asked.`,
     a.reasons.includes("DepthTooLow") &&
-      `Depth cap ${fmtInt(a.cap)} ${base} (${r.capSharePct}% of lowest depth ${fmtInt(a.minDepthWindow)}) vs ${fmtInt(a.collateralAfter)} requested.`,
+      `Depth cap ${fmtInt(a.cap)} ${base} (${r.capSharePct}% of the lowest depth over the oracle's window, ${fmtInt(a.minDepthWindow)}) vs ${fmtInt(a.collateralAfter)} requested.`,
   ].filter(Boolean) as string[];
 
   return (
     <main style={{ maxWidth: "1360px", margin: "0 auto", padding: "32px", display: "flex", flexDirection: "column", gap: "24px" }}>
       <section style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "flex-end", gap: "24px" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: "6px", maxWidth: "760px" }}>
-          <span style={{ fontSize: "13px", color: "#7D7D7D", letterSpacing: "0.08em", textTransform: "uppercase" }}>February 2026 · YieldBlox pattern</span>
+          <span title={REAL_EVENT_NOTE} style={{ fontSize: "13px", color: "#7D7D7D", letterSpacing: "0.08em", textTransform: "uppercase" }}>February 2026 · YieldBlox pattern<sup><a href="#sources" style={{ color: "#7D7D7D", textDecoration: "none" }}> 1</a></sup></span>
           <h1 style={{ margin: 0, fontSize: "34px", fontWeight: 600 }}>One trade pumped {base} {factor}×. Two pools, two oracles.</h1>
           <span style={{ fontSize: "12px", color: live ? "#40B66B" : "#B7791F" }}>
             {live ? "Live on testnet: every step is a real transaction; numbers are contract reads." : "Simulated replay: DEX and Pool A numbers are the scenario. Fathom and Pool B numbers are live reads. Open with ?demo to run it on testnet."}
@@ -214,7 +222,13 @@ function ReplayRoom({ r }: { r: ReplayView }) {
         </section>
       </div>
 
-      <p style={{ margin: 0, fontSize: "13px", color: "#7D7D7D" }}>Replay of the attack pattern with testnet contracts. Real event: about $10.2M drained from a Blend pool, about $7M later frozen by validators.</p>
+      <p style={{ margin: 0, fontSize: "13px", color: "#7D7D7D" }}>
+        Replay of the attack pattern with testnet contracts.{" "}
+        <span title={REAL_EVENT_NOTE} style={{ textDecoration: "underline dotted" }}>Real event</span>: about $10.2M drained from a Blend pool, about $7M later frozen by validators.<sup><a href="#sources" style={{ color: "#7D7D7D" }}>1</a></sup>
+      </p>
+      <p id="sources" style={{ margin: 0, fontSize: "12px", color: "#7D7D7D" }}>
+        1. YieldBlox DAO pool on Blend V2, 22 February 2026, 00:25 UTC. Drained: $10.2M (<a href={SOURCES.halborn} target="_blank" rel="noreferrer" style={src}>Halborn</a>, <a href={SOURCES.protos} target="_blank" rel="noreferrer" style={src}>Protos</a>); <a href={SOURCES.rekt} target="_blank" rel="noreferrer" style={src}>Rekt</a> counts $10.97M. Frozen by Stellar Tier-1 validators: $7.2M (Halborn); 48M XLM ≈ $7.5M (Protos). USTRY moved from ~$1.06 to ~$106.74 on a pair with less than $1 of hourly volume (Rekt, Protos).
+      </p>
     </main>
   );
 }

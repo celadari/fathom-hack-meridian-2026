@@ -59,6 +59,7 @@ export async function loadAuction(): Promise<AuctionView> {
     quote: "USDC",
     closesAt: ms(current.commit_end),
     lastClearing: last?.cleared ? num(last.price) : null,
+    publishedPrice: liq && liq.status === 2 ? num(liq.price) : null,
     haircutPct: liq && liq.status !== 0 ? Number(liq.haircut_bps) / 100 : null,
     depth: liq ? num(liq.depth) : 0,
     nav: liq ? num(liq.nav) : 0,

@@ -23,6 +23,8 @@ export interface AuctionView {
   /** End of the commit window, ms since epoch. */
   closesAt: number;
   lastClearing: number | null;
+  /** Fathom's published price (oracle), the hero's "surface". Null while not published. */
+  publishedPrice: number | null;
   haircutPct: number | null;
   depth: number;
   nav: number;

@@ -4,6 +4,7 @@ dist/
 .env
 .env.*
 !.env.example
+!app/.env.production
 *.secret
 .stellar/
 circuits/**/target/

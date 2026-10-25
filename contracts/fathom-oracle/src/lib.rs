@@ -227,6 +227,12 @@ impl FathomOracle {
         history(&env, &asset).last()
     }
 
+    /// Timestamp of the latest published price for any asset (0 if none). Lets Blend's
+    /// oracle-aggregator use Fathom as a source (its PriceFeed needs `last_timestamp`).
+    pub fn last_timestamp(env: Env) -> u64 {
+        Self::assets(env.clone()).iter().filter_map(|a| history(&env, &a).last()).map(|p| p.timestamp).max().unwrap_or(0)
+    }
+
     /// The latest price published at or before `timestamp`.
     pub fn price(env: Env, asset: Asset, timestamp: u64) -> Option<PriceData> {
         history(&env, &asset).iter().rev().find(|p| p.timestamp <= timestamp)

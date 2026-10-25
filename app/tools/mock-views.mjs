@@ -11,6 +11,7 @@ export const MOCK_VIEWS = {
     quote: "USDC",
     closesAt: now + (2 * 60 + 14) * min + 37_000,
     lastClearing: 1.04,
+    publishedPrice: 1.04,
     haircutPct: 1.9,
     depth: 24_800,
     nav: 1.06,

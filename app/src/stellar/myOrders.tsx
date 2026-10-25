@@ -2,7 +2,7 @@
 // the chain, and reveal, automatically while the tab is open in the reveal window.
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { IDS, expertTx } from "../config";
-import { onEvents } from "./events";
+import { ledgerNow, onEvents } from "./events";
 import { AUCTION_ERRORS, contractErrorCode, read, send } from "./client";
 import { commitment, hexBytes, newSalt, saltBytes } from "./commitment";
 import { loadOpenings, patchOpening, saveOpening, type StoredOpening } from "./openings";
@@ -56,7 +56,7 @@ export function MyOrdersProvider({ children }: { children: ReactNode }) {
   const [stored, setStored] = useState<StoredOpening[]>([]);
   const [chain, setChain] = useState<Map<string, RawOrder>>(new Map());
   const [windows, setWindows] = useState<Map<string, { commitEnd: number; revealEnd: number }>>(new Map());
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(ledgerNow());
   const attempted = useRef(new Set<string>());
 
   const reload = useCallback(async () => {
@@ -86,7 +86,7 @@ export function MyOrdersProvider({ children }: { children: ReactNode }) {
   useEffect(() => void reload(), [reload]);
   useEffect(() => onEvents((evs) => evs.some((e) => e.contract === IDS.auction) && void reload()), [reload]);
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1000);
+    const id = setInterval(() => setNow(ledgerNow()), 1000);
     return () => clearInterval(id);
   }, []);
 

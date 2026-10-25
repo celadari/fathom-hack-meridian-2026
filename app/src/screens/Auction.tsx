@@ -14,6 +14,7 @@ import { DEMO, UNIT } from "../config";
 import type { AuctionView } from "../data/types";
 import { useFathom } from "../data/useFathom";
 import { fmtCountdown, fmtInt, fmtK, fmtPct, fmtTime, fmtUsd } from "../lib/format";
+import { ledgerNow } from "../stellar/events";
 import { useMyOrders, type SealProgress } from "../stellar/myOrders";
 import { useWallet } from "../stellar/wallet";
 
@@ -24,9 +25,9 @@ const priceInput: CSSProperties = { width: "5ch", fontVariantNumeric: "tabular-n
 const sealBtn: CSSProperties = { marginTop: "4px", background: "#FC72FF", color: "#FFFFFF", border: "none", borderRadius: "20px", padding: "18px", fontSize: "18px", fontWeight: 535, minHeight: "56px", fontFamily: "inherit", cursor: "pointer" };
 
 function useNow(intervalMs = 1000) {
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(ledgerNow());
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), intervalMs);
+    const id = setInterval(() => setNow(ledgerNow()), intervalMs);
     return () => clearInterval(id);
   }, [intervalMs]);
   return now;
@@ -50,7 +51,11 @@ function AuctionRoom({ a }: { a: AuctionView }) {
   const now = useNow();
   const [side, setSide] = useState<"buy" | "sell">("buy");
   const [qtyText, setQtyText] = useState("30,000");
-  const [priceText, setPriceText] = useState({ buy: "1.040", sell: "1.020" });
+  // Limit prices start from Fathom's published price (sell one grid step below); empty if none.
+  const fromOracle = (p: number | null) => (p ? p.toFixed(3) : "");
+  const [priceText, setPriceText] = useState({ buy: fromOracle(a.publishedPrice), sell: fromOracle(a.publishedPrice ? a.publishedPrice - a.grid.tick : null) });
+  const [priceEdited, setPriceEdited] = useState({ buy: false, sell: false });
+  const [qtyEdited, setQtyEdited] = useState(false);
   const [standing, setStanding] = useState(true);
   const [progress, setProgress] = useState<null | { text: string; lock: string; p: SealProgress }>(null);
 
@@ -123,14 +128,15 @@ function AuctionRoom({ a }: { a: AuctionView }) {
           </span>
         </div>
         <div style={{ background: "#F9F9F9", border: "1px solid #F0F0F0", borderRadius: "20px", padding: "16px", display: "flex", flexDirection: "column", gap: "8px" }}>
-          <label htmlFor="qty" style={{ color: "#7D7D7D", fontSize: "14px" }}>{buy ? "You buy" : "You sell"}</label>
+          <label htmlFor="qty" style={{ color: "#7D7D7D", fontSize: "14px" }}>{buy ? "You buy" : "You sell"}{!qtyEdited && <span style={{ fontSize: "12px" }}> · example quantity, edit it</span>}</label>
           <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-            <input id="qty" inputMode="numeric" value={qtyText} onChange={(e) => setQtyText(e.target.value)} onBlur={() => setQtyText(qty ? fmtInt(qty) : "")} style={bigInput} />
+            <input id="qty" inputMode="numeric" value={qtyText} onChange={(e) => { setQtyText(e.target.value); setQtyEdited(true); }} onBlur={() => setQtyText(qty ? fmtInt(qty) : "")} style={bigInput} />
             <span style={{ background: "#FFFFFF", border: "1px solid #F0F0F0", borderRadius: "20px", padding: "6px 12px", fontWeight: 535 }}>{a.base}</span>
           </div>
           <span style={{ color: "#7D7D7D", fontSize: "14px" }}>
             <label htmlFor="limit">{buy ? "Max price" : "Min price"}</label> $
-            <input id="limit" inputMode="decimal" value={priceText[side]} onChange={(e) => setPriceText({ ...priceText, [side]: e.target.value })} style={priceInput} />
+            <input id="limit" inputMode="decimal" value={priceText[side]} placeholder="0.000" onChange={(e) => { setPriceText({ ...priceText, [side]: e.target.value }); setPriceEdited({ ...priceEdited, [side]: true }); }} style={priceInput} />
+            {!priceEdited[side] && priceText[side] && <span style={{ fontSize: "12px" }}> (from Fathom price{side === "sell" ? " − 1 tick" : ""})</span>}
             {" "}· NAV {a.nav ? fmtUsd(a.nav) : "—"} <SetByUs title={NAV_TITLE} />
           </span>
         </div>
@@ -180,7 +186,7 @@ function AuctionRoom({ a }: { a: AuctionView }) {
                   {p?.step === "locked" && <> · <a href={p.link} target="_blank" rel="noreferrer" style={{ color: "#FC72FF" }}>stellar.expert</a></>}
                 </span>
               </li>
-              <li style={{ display: "flex", gap: "8px", color: "#7D7D7D" }}><span style={{ color: "#B5B5B5" }}>·</span>Zero-knowledge proof (made and checked in your browser) arrives in the next build</li>
+              <li style={{ display: "flex", gap: "8px", color: "#7D7D7D" }}><span style={{ color: "#B5B5B5" }}>·</span>Funding checked at reveal. Private on-chain proof needs Soroban's zero-knowledge verifier (not live yet).</li>
             </ol>
             {p?.step === "error" && <span role="alert" style={{ fontSize: "13px", color: "#D93A3A" }}>{p.error}</span>}
           </div>
@@ -204,11 +210,13 @@ function AuctionRoom({ a }: { a: AuctionView }) {
               <circle className="sonar" style={{ animationDelay: "1s" }} cx="320" cy="56" r="20" />
               <circle className="sonar" style={{ animationDelay: "2s" }} cx="320" cy="56" r="20" />
             </g>
-            {[[150, 118, 0], [250, 160, 0.7], [372, 132, 1.4], [470, 190, 2.1], [90, 200, 1]].slice(0, Math.max(1, Math.min(5, a.sealed.length || 5))).map(([x, y, d]) => (
+            {/* One envelope per sealed order in this auction (up to 5). Positions are decorative: price and quantity are hidden. */}
+            {[[150, 118, 0], [250, 160, 0.7], [372, 132, 1.4], [470, 190, 2.1], [90, 200, 1]].slice(0, Math.min(5, a.sealedCount)).map(([x, y, d]) => (
               <g key={`${x}`} className="bob" style={{ animationDelay: `${d}s` }}><g transform={`translate(${x} ${y})`}><rect width="34" height="24" rx="4" fill="#FFFFFF" stroke="#FC72FF" strokeWidth="1.5" /><path d="M0 0 L17 12 L34 0" fill="none" stroke="#FC72FF" strokeWidth="1.5" /></g></g>
             ))}
             <g fontSize="11" fill="#7D7D7D">
               <line x1="600" y1="70" x2="600" y2="250" stroke="#131313" strokeOpacity=".25" />
+              <text x="606" y="64" textAnchor="end" fontSize="10">USTRY depth</text>
               {ticks.map((t) => (
                 <g key={t.y}><line x1="594" y1={t.y} x2="606" y2={t.y} stroke="#131313" strokeOpacity=".25" /><text x="590" y={t.y + 4} textAnchor="end">{t.label}</text></g>
               ))}
@@ -218,8 +226,10 @@ function AuctionRoom({ a }: { a: AuctionView }) {
               <circle className="pop" style={{ animationDelay: "1s" }} cx="600" cy={depthY} r="5" fill="#FC72FF" />
               <text x="556" y={depthY + 4} textAnchor="end" fontSize="13" fontWeight="600" fill="#131313">{fmtK(a.depth)} deep</text>
             </g>
-            <text x="24" y="34" fontSize="13" fill="#131313" fontWeight="535">Surface price {a.lastClearing ? fmtUsd(a.lastClearing) : "not published yet"}</text>
-            <text x="24" y="250" fontSize="12" fill="#7D7D7D">Every envelope is a sealed, funded order</text>
+            <text x="24" y="34" fontSize="13" fill="#131313" fontWeight="535">Surface price {a.publishedPrice ? fmtUsd(a.publishedPrice) : "not published"}</text>
+            <text x="24" y="250" fontSize="12" fill="#7D7D7D">
+              {a.sealedCount === 0 ? `No sealed orders in auction #${a.id} yet` : `${a.sealedCount} sealed, funded order${a.sealedCount > 1 ? "s" : ""} in auction #${a.id}${a.sealedCount > 5 ? " (5 shown)" : ""} · positions are decorative`}
+            </text>
           </svg>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>

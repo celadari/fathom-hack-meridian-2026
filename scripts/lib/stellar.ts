@@ -31,14 +31,29 @@ export function stellar(...args: string[]): string {
   return execFileSync("stellar", args, { cwd: ROOT, encoding: "utf8", stdio: ["ignore", "pipe", "inherit"] }).trim();
 }
 
-/** Create (and fund via friendbot) a CLI identity if it does not exist yet. */
+/** Env var holding an identity's secret on a host without the Stellar CLI: fathom-bot-alice → FATHOM_KEY_BOT_ALICE. */
+export const keyEnvName = (name: string) => `FATHOM_KEY_${name.replace(/^fathom-/, "").replace(/-/g, "_").toUpperCase()}`;
+const cache = new Map<string, Keypair>();
+
+/**
+ * The keypair for a demo identity: from FATHOM_KEY_* (hosted demo server) or the Stellar CLI
+ * keystore, creating and funding it with the CLI if it does not exist yet (local only).
+ */
 export function ensureIdentity(name: string): Keypair {
+  if (cache.has(name)) return cache.get(name)!;
+  const fromEnv = process.env[keyEnvName(name)];
+  if (fromEnv) {
+    cache.set(name, Keypair.fromSecret(fromEnv));
+    return cache.get(name)!;
+  }
+  if (process.env.FATHOM_KEYS_FROM_ENV_ONLY) throw new Error(`missing secret ${keyEnvName(name)}`);
   const known = stellar("keys", "ls").split("\n").map((s) => s.trim());
   if (!known.includes(name)) {
     console.log(`  creating identity ${name}`);
     stellar("keys", "generate", name, "--network", NETWORK, "--fund");
   }
-  return Keypair.fromSecret(stellar("keys", "secret", name));
+  cache.set(name, Keypair.fromSecret(stellar("keys", "secret", name)));
+  return cache.get(name)!;
 }
 
 async function submit(source: Keypair, ops: xdr.Operation[]) {

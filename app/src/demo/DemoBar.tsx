@@ -2,7 +2,7 @@
 // next auction (end commits → your reveals → close), run the attack replay.
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useNavigate } from "react-router";
-import { DEMO } from "../config";
+import { DEMO, demoToken, setDemoToken } from "../config";
 import { useFathom } from "../data/useFathom";
 import { useMyOrders } from "../stellar/myOrders";
 import { demo, type DemoStep } from "./api";
@@ -20,9 +20,11 @@ export function DemoBar() {
   const [log, setLog] = useState<DemoStep[]>([]);
   const [open, setOpen] = useState(false);
   const [server, setServer] = useState<"unknown" | "up" | "down">("unknown");
+  const [needsToken, setNeedsToken] = useState(false);
+  const [tokenInput, setTokenInput] = useState("");
 
   useEffect(() => {
-    demo.status().then(() => setServer("up")).catch(() => setServer("down"));
+    demo.status().then((s) => { setServer("up"); setNeedsToken(s.auth && !demoToken()); }).catch(() => setServer("down"));
   }, []);
   if (!DEMO) return null;
 
@@ -67,6 +69,12 @@ export function DemoBar() {
   return (
     <aside aria-label="Demo controls" style={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 30, background: "rgba(255,255,255,.96)", borderTop: "1px solid #F0F0F0", boxShadow: "0 -4px 20px rgba(0,0,0,.05)", padding: "8px 16px", display: "flex", flexWrap: "wrap", alignItems: "center", gap: "8px", fontFamily: "Inter, system-ui, sans-serif", fontSize: "13px" }}>
       <span style={{ fontWeight: 600, color: "#FC72FF" }}>Demo</span>
+      {needsToken && (
+        <form onSubmit={(e) => { e.preventDefault(); setDemoToken(tokenInput.trim()); setNeedsToken(false); }} style={{ display: "flex", gap: "6px" }}>
+          <input aria-label="Demo token" type="password" placeholder="Demo token" value={tokenInput} onChange={(e) => setTokenInput(e.target.value)} style={{ border: "1px solid #F0F0F0", borderRadius: "10px", padding: "6px 10px", fontFamily: "inherit", fontSize: "13px", width: "140px" }} />
+          <button type="submit" style={{ ...btn, background: "#131313" }}>Use</button>
+        </form>
+      )}
       <button type="button" disabled={!!busy} style={{ ...btn, opacity: busy ? 0.5 : 1 }} onClick={() => run("Seeding bot orders", async () => add((await demo.seed()).steps))}>Seed bot orders</button>
       <button type="button" disabled={!!busy} style={{ ...btn, opacity: busy ? 0.5 : 1 }} onClick={nextAuction}>Next auction</button>
       <button type="button" disabled={!!busy} style={{ ...btn, background: "#131313", opacity: busy ? 0.5 : 1 }} onClick={() => navigate("/replay?autorun=1")}>Run attack replay</button>

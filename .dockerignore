@@ -1,0 +1,11 @@
+**/node_modules
+target
+app
+contracts
+crates
+circuits
+designs
+docs
+scripts/.state
+**/.env
+**/.env.*

@@ -1,28 +1,129 @@
 # Fathom
 
 Sealed periodic auctions for real-world-asset tokens on Stellar, published as an oracle:
-a **price** and a measured **depth** (how much can really be sold near that price).
+a **price** and a measured **depth** (how much can really be sold near that price), so lending
+pools stop trusting thin DEX prices.
 
 > Testnet demo only. USTRY and USDC here are demo assets issued by our own test issuer,
-> not the real Etherfuse USTRY or Circle USDC.
+> not the real Etherfuse USTRY or Circle USDC. The USTRY NAV and the DEX price are demo feeds we set.
 
-## Toolchain (pinned)
+**Live demo:** _app URL after deploy_ · **Backup video:** _link after recording_ ·
+**Why:** the [February 2026 YieldBlox exploit](#the-real-event-february-2026).
 
-| Tool | Version | Why this version |
-|---|---|---|
-| Rust | 1.92.0, target `wasm32v1-none` | `rust-toolchain.toml` |
-| soroban-sdk | 28.0.0 | required by rs-soroban-ultrahonk and soroban-poseidon |
-| stellar-cli | 28.1.0 | |
-| Noir (nargo) | 1.0.0-beta.9 | only version the UltraHonk verifier supports |
-| Barretenberg (bb) | 0.87.0 | same; Keccak oracle |
-| Node | 24 | |
+## Architecture
 
-Testnet runs protocol 29 (verifier needs ≥ 28).
+```mermaid
+flowchart LR
+  subgraph Browser["Browser (app/)"]
+    UI["React app"]
+    Seal["Sealing: Poseidon2 commitment (bb.js)<br/>opening saved in localStorage first"]
+    W["Freighter / demo burner wallet"]
+  end
+  subgraph Stellar["Stellar testnet (Soroban)"]
+    A["fathom-auction<br/>commit → reveal → close → settle"]
+    O["fathom-oracle<br/>SEP-40 price + depth, per asset"]
+    NAV["mock-nav<br/>(demo feed, set by us)"]
+    DEX["mock-dex-price<br/>(demo feed, anyone can move)"]
+    PA["demo-pool-a<br/>values at DEX price"]
+    PB["demo-pool-b<br/>values at Fathom price,<br/>caps by lowest depth"]
+    TOK["USTRY / USDC SACs"]
+  end
+  subgraph Host["Demo server (scripts/, Fly)"]
+    DS["demo-server: seed bots, next auction,<br/>attack replay, faucet, auction loop<br/>holds testnet admin/bot/attacker keys"]
+  end
+  UI --> Seal --> W
+  W -- "place_order (commitment + fixed deposit)<br/>reveal (opening)" --> A
+  A -- "escrow / payouts" --> TOK
+  A -- "record(asset, report) after each close<br/>(push; only the registered auction)" --> O
+  O -. "reads NAV when recording" .-> NAV
+  PB -- "lastprice, liquidity" --> O
+  PA -- "price" --> DEX
+  UI -- "simulated reads + getEvents polling" --> Stellar
+  UI -- "?demo buttons (token)" --> DS
+  DS -- "bot orders, reveals, close, replay txs" --> Stellar
+```
 
-Installing bb 0.87.0: `bbup -v 0.87.0` builds a wrong release URL; download it directly instead:
-`curl -L https://github.com/AztecProtocol/aztec-packages/releases/download/v0.87.0/barretenberg-amd64-linux.tar.gz | tar -xzC ~/.bb`
+- **Sealing happens in the browser.** Only the commitment and a fixed-size deposit (10K / 50K / 250K)
+  go on-chain; the opening (side, price, quantity, salt) is stored locally before sending and revealed
+  from the browser in the reveal window.
+- **Push, not pull.** After each close the auction pushes one report to the oracle. The oracle stores
+  everything per asset; its reads (`lastprice`, `depth`, `liquidity`) never call another contract.
+- **Pools read the oracle.** Pool B values collateral at Fathom's price and caps total USTRY collateral
+  at 50% of the lowest depth over the oracle's window. Pool A reads the DEX and is the one that gets drained.
+- **The demo server** holds the testnet keys for the bots, the admin (demo fast-forward) and the
+  attacker, so the browser never does.
 
-## Setup
+## Contract IDs (testnet)
+
+<!-- contract-ids:start -->
+<!-- contract-ids:end -->
+
+## Run it
+
+```bash
+# 1. Contracts (Rust 1.92, stellar-cli 28.1)
+cargo test                                  # 36 contract tests
+cd scripts && npm install
+npm run deploy                              # idempotent; writes deployments/testnet.json and app/.env*
+
+# 2. Demo server (keys from the Stellar CLI keystore, 127.0.0.1 only, no token)
+npm run demo-server -- --loop               # --loop: reveal bots, close auctions, seed, continuously
+
+# 3. App
+cd ../app && npm install && npm run dev      # http://localhost:5173  (add ?demo for the demo bar)
+```
+
+Other scripts: `npm run worked-example` (the worked example as a real auction), `npm run replay`
+(attack replay from the CLI), `npm run seed`, `npm run auction-loop`.
+
+### Hosted demo
+
+- **Demo server on Fly** (`fly.toml`, `Dockerfile`): always on (`auto_stop_machines = "off"`), auction
+  loop running, state (bot openings) on a volume. Keys are Fly secrets exported from the local keystore
+  (`npx tsx scripts/export-demo-secrets.ts | fly secrets import`), never in the image. Demo actions need
+  `Authorization: Bearer $DEMO_TOKEN`; every POST is rate limited per IP (12/min), the faucet per address
+  (1 per 10 min). CORS only for `ALLOWED_ORIGINS`.
+- **App on Vercel** (`app/vercel.json`): builds with the committed `app/.env.production` (public contract
+  ids, `VITE_DEMO_API` pointing at the Fly server). Open with `?demo=<token>` for the demo bar.
+
+## Honest limits
+
+- **Visible on-chain:** each order's **side** (USDC deposit = buy, USTRY = sell) and **deposit size** (one
+  of three fixed sizes). Price and quantity are hidden until the close. Confidential token deposits would
+  hide size and side; not in this build.
+- **Zero-knowledge proof is off-chain.** The only Soroban UltraHonk verifier available
+  ([rs-soroban-ultrahonk](https://github.com/NethermindEth/rs-soroban-ultrahonk)) verifies *non*-ZK proofs,
+  which would leak the order if posted on-chain. Real orders never post a proof; funding is checked by the
+  contract at reveal.
+- **Demo feeds.** The USTRY NAV ($1.06) comes from `mock-nav` and the DEX price from `mock-dex-price`, both
+  set by us and tagged so in the app.
+- **Blend integration goes through the oracle-aggregator.** Blend pools read prices through an
+  aggregator such as [blend-capital/oracle-aggregator](https://github.com/blend-capital/oracle-aggregator),
+  which needs a SEP-40 source with `last_timestamp`, `price(asset, timestamp)`, `resolution` and `decimals`
+  (Fathom has all four). Two caveats: the aggregator only passes on the **price**, not depth (the depth cap
+  is Pool B's own logic), and it rejects prices older than its `max_age` (6–60 min), so daily auctions would
+  need the price republished each hour or auctions at least hourly. Nothing here is integrated with a real
+  Blend pool.
+- **Bait-and-switch window is short in the demo:** pools use the lowest depth over 30 minutes (production:
+  weeks), so depth added just before a demo does not count yet.
+- **Sybil / wash resistance** relies on locked, non-cancellable standing bids; bonded membership and
+  nullifiers are not implemented.
+
+## The real event (February 2026)
+
+The YieldBlox DAO pool on Blend V2 was exploited on 22 February 2026 at 00:25 UTC: one trade on a USTRY
+market with less than $1 of hourly volume moved the price from ~$1.06 to ~$106.74, and the inflated
+collateral was borrowed against.
+
+| Fact | Sources |
+|---|---|
+| About $10.2M drained | [Halborn](https://www.halborn.com/blog/post/explained-the-yieldblox-hack-february-2026) ("approximately $10.2 million"), [Protos](https://protos.com/yieldblox-lending-pool-hit-by-10m-hack-on-stellar/) ("withdrawing $10.2 million"); [Rekt](https://rekt.news/yieldblox-rekt) counts $10.97M |
+| About $7M frozen by Stellar Tier-1 validators | Halborn ($7.2M); Protos (48M XLM ≈ $7.5M) |
+| 22 Feb 2026, 00:25 UTC; < $1 hourly volume; ~$1.06 → ~$106.74 | Rekt; Protos (quoting Script3) |
+
+## Details
+
+### Deploy script
 
 ```bash
 cargo test                     # contract unit tests
@@ -39,7 +140,7 @@ npm run auction-loop           # keep auctions running: reveal bots, close, seed
 `deployments/testnet.json` and the app config to `app/.env` (gitignored). Keys stay in the Stellar
 CLI keystore, never in the repo. All tunable parameters live in `scripts/config.ts`.
 
-## How an auction runs (`contracts/fathom-auction`)
+### How an auction runs (`contracts/fathom-auction`)
 
 | Step | Call | What happens |
 |---|---|---|
@@ -65,7 +166,7 @@ order landed first). Clients re-simulate and resend FAILED transactions (`script
 
 Demo mode: `fast_forward()` (admin) ends the current commit window, or the reveal window, immediately.
 
-## Oracle (`contracts/fathom-oracle`)
+### Oracle (`contracts/fathom-oracle`)
 
 A separate contract so more assets can be added without redeploying. The admin registers each asset
 with the one auction contract allowed to report for it: `register_asset(asset, auction, nav_feed)`.
@@ -82,7 +183,7 @@ then and stores it per asset; reads never call another contract.
 Even-length median (fewer than 7 auctions so far) takes the lower middle value. Assets without a NAV
 feed use the median itself, with no haircut.
 
-## Demo pools
+### Demo pools
 
 - **Pool A** (`demo-pool-a`) values USTRY at the thin DEX price. One trade pumps it ×100 and the pool is drained.
 - **Pool B** (`demo-pool-b`) values USTRY at Fathom `lastprice` × LTV and rejects any borrow that would take
@@ -97,7 +198,7 @@ same checks but records a rejection on-chain (a `borrow_rejected` event with eve
 moved), so the replay has a transaction to link to. It is not called `try_borrow` because Soroban's
 generated Rust client already defines `try_borrow` for `borrow`.
 
-## App (`app/`)
+### App (`app/`)
 
 Vite + React + TypeScript, ported from `designs/`, reading the testnet contracts.
 Screens: Auction (`/`), Last close (`/close`), Liquidity, Attack replay, How it works.
@@ -134,25 +235,25 @@ node tools/e2e.mjs     # full browser-driven run on testnet; logs every stellar.
 Differences from the designs: [docs/design-diff.md](docs/design-diff.md). Last full testnet run:
 [docs/testnet-run.md](docs/testnet-run.md).
 
-### Before presenting
+#### Before presenting
 
 Pool B caps borrowing at 50% of the *lowest* depth over the oracle's window (30 min in the demo). Depth
 added just before the demo does not count until the window has passed: that is the bait-and-switch
 protection. Run `npm run demo-server -- --loop` for at least 30 minutes before presenting so the
 dashboard shows a real cap.
 
-### Concurrency notes
+#### Concurrency notes
 
 - Order ids are derived from the commitment, not a counter, so concurrent orders touch different keys.
 - `place_order` appends to the auction's order list; clients declare 512 extra write bytes so an order
   that lands just after another one does not fail ("byte-write resources exceeds amount specified").
 - Transactions that fail on-chain (nothing applied) are re-simulated and resent after a short random wait.
 
-## Conventions
+### Conventions
 
 All prices are 7-decimal fixed point (`$1.06 = 10_600_000`), like Stellar token amounts.
 
-## Layout
+### Layout
 
 - `contracts/mock-nav`: admin-set NAV feed for USTRY ($1.06)
 - `contracts/mock-dex-price`: thin "last trade" price that anyone can move (used by the attack replay)
@@ -165,3 +266,19 @@ All prices are 7-decimal fixed point (`$1.06 = 10_600_000`), like Stellar token 
 - `scripts/worked-example.ts`: the worked example (+ Eve's standing bid), end to end on testnet
 - `scripts/replay-attack.ts`: the YieldBlox-style replay
 - `designs/`: approved screen designs (reference for the React port)
+
+## Toolchain (pinned)
+
+| Tool | Version | Why this version |
+|---|---|---|
+| Rust | 1.92.0, target `wasm32v1-none` | `rust-toolchain.toml` |
+| soroban-sdk | 28.0.0 | required by rs-soroban-ultrahonk and soroban-poseidon |
+| stellar-cli | 28.1.0 | |
+| Noir (nargo) | 1.0.0-beta.9 | only version the UltraHonk verifier supports |
+| Barretenberg (bb) | 0.87.0 | same; Keccak oracle |
+| Node | 24 | |
+
+Testnet runs protocol 29 (verifier needs ≥ 28).
+
+Installing bb 0.87.0: `bbup -v 0.87.0` builds a wrong release URL; download it directly instead:
+`curl -L https://github.com/AztecProtocol/aztec-packages/releases/download/v0.87.0/barretenberg-amd64-linux.tar.gz | tar -xzC ~/.bb`

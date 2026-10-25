@@ -103,6 +103,7 @@ function CloseView({ c }: { c: CloseViewData }) {
               </g>
               <g fontFamily="Inter, sans-serif" fontSize="12" fill="#7D7D7D">
                 {k.levels.map((p, i) => <text key={p} x={k.x(i)} y="302" textAnchor="middle">{fmtUsd(p)}</text>)}
+                <text x="60" y="30" textAnchor="start" fontSize="11">{base}, cumulative</text>
                 <text x="50" y="284" textAnchor="end">0</text>
                 <text x="50" y="164" textAnchor="end">{k.yMax / 2000}k</text>
                 <text x="50" y="44" textAnchor="end">{k.yMax / 1000}k</text>

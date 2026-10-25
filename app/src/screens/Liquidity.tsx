@@ -77,7 +77,7 @@ function LiquidityView({ l }: { l: LiquidityData }) {
                 {stat(`Price (${l.medianWindow}-auction median)`, l.status === "Ok" ? fmtUsd(l.price) : "Not published")}
                 {stat(`Haircut vs NAV ${fmtUsd(l.nav)}`, fmtPct(l.haircutPct), <span><SetByUs title={NAV_TITLE} /></span>)}
                 {stat("Standing buy orders", fmtInt(l.standingOrders))}
-                {stat(`Lowest depth, ${l.depthWindowLabel}`, fmtInt(l.minDepthWindow))}
+                {stat(`Lowest depth, last ${l.depthWindowLabel}`, fmtInt(l.minDepthWindow))}
               </div>
               <p style={{ margin: 0, fontSize: "13px", color: "#7D7D7D" }}>Depth counts locked {l.standingDays}-day buy orders priced at most {l.depthFloorPct}% below NAV. Selling to yourself uses them up, so it can only lower this number.</p>
             </div>
@@ -89,7 +89,7 @@ function LiquidityView({ l }: { l: LiquidityData }) {
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: "14px" }}><span>Pool B · {l.asset} borrow cap</span><span style={{ fontVariantNumeric: "tabular-nums" }}>{fmtInt(l.poolB.used)} / {fmtInt(l.poolB.cap)}</span></div>
               <div style={{ height: "8px", borderRadius: "4px", background: "#F0F0F0", overflow: "hidden" }}><div style={{ height: "100%", width: `${capPct}%`, background: capFull ? "#B7791F" : "#40B66B", animation: "growX 1.4s ease-out .4s both" }} /></div>
               <span style={{ fontSize: "12px", color: "#7D7D7D" }}>
-                Cap = {l.poolB.capSharePct}% of lowest depth. {l.poolB.cap === 0 ? `No depth yet: Pool B lends nothing new against ${l.asset}.` : capFull ? `Full: new ${l.asset} loans wait for more depth.` : `${fmtInt(l.poolB.cap - l.poolB.used)} ${l.asset} of room left.`}
+                Cap = {l.poolB.capSharePct}% of the lowest depth over the last {l.depthWindowLabel}. {l.poolB.cap === 0 ? `No depth yet: Pool B lends nothing new against ${l.asset}.` : capFull ? `Full: new ${l.asset} loans wait for more depth.` : `${fmtInt(l.poolB.cap - l.poolB.used)} ${l.asset} of room left.`}
               </span>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: "6px", borderTop: "1px solid #F0F0F0", paddingTop: "16px" }}>

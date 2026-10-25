@@ -20,6 +20,9 @@ const listeners = new Set<Listener>();
 let timer: ReturnType<typeof setTimeout> | null = null;
 let cursor: string | null = null;
 let lastError: string | null = null;
+/** Ledger time minus browser time (ms), from the latest ledger's close time. Countdowns use ledger time. */
+let clockOffset = 0;
+export const ledgerNow = () => Date.now() + clockOffset;
 
 const WATCHED = () => [IDS.auction, IDS.oracle, IDS.poolA, IDS.poolB, IDS.dex].filter(Boolean);
 
@@ -31,6 +34,8 @@ async function poll() {
       : await server.getEvents({ startLedger: (await server.getLatestLedger()).sequence - 5, filters, limit: 100 });
     cursor = res.cursor;
     lastError = null;
+    const closed = Number(res.latestLedgerCloseTime) * 1000;
+    if (closed > 0) clockOffset = closed - Date.now(); // ledgers close every ~5 s: ledger time lags by up to that
     const events = res.events.map<FathomEvent>((e) => {
       const topics = e.topic.map((t) => safeNative(t));
       return {

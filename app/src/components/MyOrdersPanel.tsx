@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { expertTx, num } from "../config";
 import { fmtCountdown, fmtInt, fmtUsd } from "../lib/format";
+import { ledgerNow } from "../stellar/events";
 import { useMyOrders, type MyOrder } from "../stellar/myOrders";
 import { downloadBackup, importBackup } from "../stellar/openings";
 import { useWallet } from "../stellar/wallet";
@@ -16,7 +17,7 @@ export function MyOrdersPanel({ grid, penaltyPct }: { grid: { min: number; tick:
   const [restoreMsg, setRestoreMsg] = useState<string | null>(null);
   const file = useRef<HTMLInputElement>(null);
   if (!address || !orders.length) return null;
-  const now = Date.now();
+  const now = ledgerNow();
   const atRisk = orders.some((o) => o.phase === "sealed" || o.phase === "reveal-window");
 
   const describe = (o: MyOrder) => {
