@@ -67,3 +67,16 @@ export async function topUp(from: Keypair, to: string, asset: Asset, amount: num
   if (have >= amount) return;
   await submit(from, [Operation.payment({ destination: to, asset, amount: (amount - have).toFixed(7) })]);
 }
+
+/** Top several accounts up to `amount` of each asset in one transaction from `from` (one sequence number). */
+export async function topUpMany(from: Keypair, targets: { to: string; asset: Asset; amount: number }[]) {
+  const ops: xdr.Operation[] = [];
+  for (const t of targets) {
+    const account = await horizon.loadAccount(t.to);
+    const line = account.balances.find((b) => "asset_code" in b && b.asset_code === t.asset.code && b.asset_issuer === t.asset.issuer);
+    const have = line ? Number(line.balance) : 0;
+    if (have < t.amount) ops.push(Operation.payment({ destination: t.to, asset: t.asset, amount: (t.amount - have).toFixed(7) }));
+  }
+  for (let i = 0; i < ops.length; i += 100) await submit(from, ops.slice(i, i + 100));
+  return ops.length;
+}

@@ -70,7 +70,6 @@ impl FathomAuction {
         let st = env.storage().instance();
         st.set(&DataKey::Config, &cfg);
         st.set(&DataKey::Params, &params);
-        st.set(&DataKey::NextOrderId, &1u64);
         st.set(&DataKey::Current, &1u64);
         st.set(&DataKey::NextToClose, &1u64);
         put(&env, &DataKey::Standing, &Vec::<u64>::new(&env));
@@ -111,8 +110,12 @@ impl FathomAuction {
         let mut auction = roll(&env, now);
         token::TokenClient::new(&env, &deposit_token).transfer(&owner, env.current_contract_address(), &deposit_amount);
 
-        let id: u64 = env.storage().instance().get(&DataKey::NextOrderId).unwrap();
-        env.storage().instance().set(&DataKey::NextOrderId, &(id + 1));
+        // The id is derived from the commitment, not a counter: concurrent orders from different
+        // users then touch different keys, which their simulated footprints already contain.
+        let id = order_id(&env, &commitment);
+        if env.storage().persistent().has(&DataKey::Order(id)) {
+            return Err(Error::CommitmentExists);
+        }
         let order = Order {
             id,
             owner: owner.clone(),
@@ -477,6 +480,16 @@ impl FathomAuction {
         env.storage().persistent().get(&DataKey::Order(id))
     }
 
+    /// Every order committed into an auction, in placement order (one read for the order list).
+    pub fn orders_in(env: Env, auction: u64) -> Vec<Order> {
+        let ids = env.storage().persistent().get::<_, Auction>(&DataKey::Auction(auction)).map(|a| a.orders).unwrap_or(Vec::new(&env));
+        let mut out = Vec::new(&env);
+        for id in ids.iter() {
+            out.push_back(order(&env, id));
+        }
+        out
+    }
+
     pub fn orders_of(env: Env, owner: Address) -> Vec<Order> {
         let ids: Vec<u64> = env.storage().persistent().get(&DataKey::OwnerOrders(owner)).unwrap_or(Vec::new(&env));
         let mut out = Vec::new(&env);
@@ -596,6 +609,12 @@ fn release(env: &Env, o: &mut Order, to_settle: &mut Vec<u64>) {
     if o.owed_base > 0 || o.owed_quote > 0 {
         to_settle.push_back(o.id);
     }
+}
+
+/// First 8 bytes of sha256(commitment). The commitment already binds the owner.
+fn order_id(env: &Env, commitment: &BytesN<32>) -> u64 {
+    let h = env.crypto().sha256(&commitment.clone().into()).to_array();
+    u64::from_be_bytes([h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7]])
 }
 
 fn n_ticks(cfg: &Config) -> u32 {

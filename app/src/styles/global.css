@@ -56,3 +56,6 @@ svg * { transform-box: fill-box; }
 .bars rect:nth-child(6) { animation-delay: .5s } .bars rect:nth-child(7) { animation-delay: .6s }
 
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important } }
+
+/* ?demo: keep page content clear of the fixed demo bar. */
+body.demo { padding-bottom: 64px; }

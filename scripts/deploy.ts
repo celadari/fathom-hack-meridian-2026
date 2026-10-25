@@ -130,6 +130,7 @@ async function main() {
       `VITE_USDC_SAC=${d.usdc_sac}`,
       `VITE_MOCK_NAV=${d.mock_nav}`,
       `VITE_MOCK_DEX_PRICE=${d.mock_dex_price}`,
+      `VITE_ISSUER=${d.issuer}`,
       `VITE_AUCTION=${d.auction}`,
       `VITE_ORACLE=${d.oracle}`,
       `VITE_POOL_A=${d.pool_a}`,

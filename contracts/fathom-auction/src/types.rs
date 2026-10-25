@@ -23,6 +23,7 @@ pub enum Error {
     NotDemo = 15,
     SaltOutOfField = 16,
     NotClosed = 17,
+    CommitmentExists = 18,
 }
 
 #[contracttype]
@@ -151,7 +152,6 @@ pub struct AuctionResult {
 pub enum DataKey {
     Config,
     Params,
-    NextOrderId,
     /// Auction currently accepting commitments.
     Current,
     /// Oldest auction not closed yet.

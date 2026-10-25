@@ -2,7 +2,8 @@
 // "Lowest depth, 4 weeks" reads the oracle's actual depth window (30 min in the demo).
 import type { CSSProperties } from "react";
 import { Header, Page } from "../components/Header";
-import type { LiquidityStatus } from "../data/types";
+import { Slice } from "../components/State";
+import type { LiquidityStatus, LiquidityView as LiquidityData } from "../data/types";
 import { useFathom } from "../data/useFathom";
 import { fmtInt, fmtPct, fmtUsd } from "../lib/format";
 
@@ -22,7 +23,16 @@ const stat = (label: string, value: string) => (
 );
 
 export function Liquidity() {
-  const { liquidity: l } = useFathom();
+  const { liquidity } = useFathom();
+  return (
+    <Page minHeight={1080}>
+      <Header />
+      <Slice of={liquidity} label="published liquidity" minHeight={400}>{(l) => <LiquidityView key={l.history.at(-1)?.auction ?? 0} l={l} />}</Slice>
+    </Page>
+  );
+}
+
+function LiquidityView({ l }: { l: LiquidityData }) {
   const maxDepth = Math.max(...l.history.map((h) => h.depth), l.depth, 1);
   const gaugeLen = Math.min(1, l.depth / (maxDepth * 1.11)) * GAUGE;
   const capFull = l.poolB.used >= l.poolB.cap;
@@ -32,12 +42,10 @@ export function Liquidity() {
   const hx = (i: number) => 120 + i * (n > 1 ? 1020 / (n - 1) : 0);
   const py = (p: number) => 40 + (l.nav - p) * 1600;
   const bh = (d: number) => (d / maxDepth) * 106;
-  const prices = l.history.map((h) => h.price);
-  const depths = l.history.map((h) => h.depth);
+  const prices = l.history.length ? l.history.map((h) => h.price) : [l.price];
+  const depths = l.history.length ? l.history.map((h) => h.depth) : [l.depth];
 
   return (
-    <Page minHeight={1080}>
-      <Header variant="pill" />
       <main style={{ maxWidth: "1360px", margin: "0 auto", padding: "32px", display: "flex", flexDirection: "column", gap: "24px" }}>
         <section style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
           <span style={{ fontSize: "13px", color: "#7D7D7D", letterSpacing: "0.08em", textTransform: "uppercase", display: "flex", alignItems: "center", gap: "8px" }}><span className="live" aria-hidden="true" />Published on-chain · SEP-40 feed · live</span>
@@ -60,7 +68,7 @@ export function Liquidity() {
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                 <span style={{ fontSize: "22px", fontWeight: 600 }}>{l.asset}</span>
                 <span style={{ fontSize: "13px", color: "#7D7D7D" }}>{l.assetName}</span>
-                <span style={STATUS[l.status].style}>{STATUS[l.status].label}</span>
+                <span style={l.status === "Ok" && l.depth === 0 ? STATUS.LowLiquidity.style : STATUS[l.status].style}>{l.status === "Ok" && l.depth === 0 ? "Price published · no depth" : STATUS[l.status].label}</span>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "16px" }}>
                 {stat(`Price (${l.medianWindow}-auction median)`, l.status === "Ok" ? fmtUsd(l.price) : "Not published")}
@@ -78,7 +86,7 @@ export function Liquidity() {
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: "14px" }}><span>Pool B · {l.asset} borrow cap</span><span style={{ fontVariantNumeric: "tabular-nums" }}>{fmtInt(l.poolB.used)} / {fmtInt(l.poolB.cap)}</span></div>
               <div style={{ height: "8px", borderRadius: "4px", background: "#F0F0F0", overflow: "hidden" }}><div style={{ height: "100%", width: `${capPct}%`, background: capFull ? "#B7791F" : "#40B66B", animation: "growX 1.4s ease-out .4s both" }} /></div>
               <span style={{ fontSize: "12px", color: "#7D7D7D" }}>
-                Cap = {l.poolB.capSharePct}% of lowest depth. {capFull ? `Full: new ${l.asset} loans wait for more depth.` : `${fmtInt(l.poolB.cap - l.poolB.used)} ${l.asset} of room left.`}
+                Cap = {l.poolB.capSharePct}% of lowest depth. {l.poolB.cap === 0 ? `No depth yet: Pool B lends nothing new against ${l.asset}.` : capFull ? `Full: new ${l.asset} loans wait for more depth.` : `${fmtInt(l.poolB.cap - l.poolB.used)} ${l.asset} of room left.`}
               </span>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: "6px", borderTop: "1px solid #F0F0F0", paddingTop: "16px" }}>
@@ -95,7 +103,7 @@ export function Liquidity() {
 
         <section aria-label="Seven-day history" style={{ background: "#F9F9F9", border: "1px solid #F0F0F0", borderRadius: "20px", padding: "24px", display: "flex", flexDirection: "column", gap: "12px" }}>
           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "baseline", gap: "16px" }}>
-            <h2 style={{ margin: 0, fontSize: "18px", fontWeight: 600 }}>Last {n} auctions</h2>
+            <h2 style={{ margin: 0, fontSize: "18px", fontWeight: 600 }}>{n === 1 ? "Last auction" : `Last ${n} auctions`}</h2>
             <span style={{ fontSize: "13px", color: "#7D7D7D" }}>Clearing price stays under NAV; depth bars from standing orders</span>
           </div>
           <svg viewBox="0 0 1240 220" role="img" aria-label={`${n} auctions: clearing price between ${fmtUsd(Math.min(...prices))} and ${fmtUsd(Math.max(...prices))} under a NAV line at ${fmtUsd(l.nav)}; depth between ${fmtInt(Math.min(...depths))} and ${fmtInt(Math.max(...depths))} ${l.asset}`} style={{ width: "100%", height: "auto" }}>
@@ -129,6 +137,5 @@ export function Liquidity() {
           </div>
         </section>
       </main>
-    </Page>
   );
 }

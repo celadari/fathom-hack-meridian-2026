@@ -7,10 +7,10 @@ import { Header, Page } from "../components/Header";
 export function HowItWorks() {
   return (
     <Page minHeight={1080} className="fx">
-      <Header variant="swap" />
+      <Header />
       <main style={{ maxWidth: '1280px', margin: '0 auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
       <section style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-      <span style={{ color: '#7D7D7D', fontSize: '14px' }}>Behind the screen</span>
+      <span style={{ color: '#7D7D7D', fontSize: '14px' }}>Behind the screen · <span style={{ color: '#B7791F' }}>illustrations use example numbers (simulated)</span></span>
       <h1 style={{ margin: '0', fontSize: '36px', fontWeight: '485' }}>What happens to your order</h1>
       </section>
       

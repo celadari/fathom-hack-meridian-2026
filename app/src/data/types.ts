@@ -8,6 +8,7 @@ export type RejectReason = "NoPrice" | "DepthTooLow" | "InsufficientCollateral" 
 
 export interface SealedOrderRow {
   id: string;
+  owner?: string;
   /** Commitment hash, shown shortened. */
   fingerprint: string;
   placedAt: number; // ms since epoch
@@ -30,6 +31,13 @@ export interface AuctionView {
   sealed: SealedOrderRow[];
   depositSizes: number[];
   standingDays: number;
+  /** Oldest auction not closed yet: in its commit window, or revealing. */
+  closing: { id: number; commitEnd: number; revealEnd: number };
+  revealSecs: number;
+  penaltyPct: number;
+  grid: { min: number; tick: number; ticks: number };
+  /** Id of the last closed auction, if any. */
+  lastClosed: number | null;
 }
 
 export interface BookOrder {
@@ -40,6 +48,8 @@ export interface BookOrder {
 
 export interface FillRow {
   who: string;
+  /** On-chain owner; the screen names it (bot name, "You") at render time. */
+  owner?: string;
   side: Side;
   qty: number;
   limit: number;
@@ -49,6 +59,7 @@ export interface FillRow {
 
 export interface CloseView {
   auction: number;
+  cleared: boolean;
   closedAt: number;
   price: number;
   matched: number;
@@ -111,20 +122,39 @@ export interface ReplayView {
   pumpPrice: number;
   fathomPrice: number;
   depth: number;
+  /** Pool B TVL (and Pool A's, before or after the attack). */
   poolTvl: number;
+  poolATvl: number;
   collateral: number;
   borrow: number;
   ltvPct: number;
+  capSharePct: number;
   assessment: Assessment;
   /** stellar.expert links for each step once the replay has run on testnet. */
   txs: { pump?: string; poolA?: string; poolB?: string };
+  /** "live": values read from testnet; "scenario": replay numbers not read from a contract (labelled simulated). */
+  values: "live" | "scenario";
 }
 
+export type Loadable<T> =
+  | { status: "loading" }
+  | { status: "empty"; reason: string }
+  | { status: "error"; error: string }
+  | { status: "ready"; data: T };
+
 export interface FathomData {
-  /** "mock" until phase 5 wires testnet reads. Shown in the header badge. */
+  /** "mock" only with ?mock (design comparison). Shown in the header badge. */
   source: "mock" | "testnet";
-  auction: AuctionView;
-  close: CloseView;
-  liquidity: LiquidityView;
-  replay: ReplayView;
+  auction: Loadable<AuctionView>;
+  close: Loadable<CloseView>;
+  liquidity: Loadable<LiquidityView>;
+  replay: Loadable<ReplayView>;
+  /** Known participant names by address (bots, "You"). */
+  names: Record<string, string>;
+  /** Shown after a close event: "Auction #N closed · $price · See results". */
+  banner: { auction: number; price: number | null } | null;
+  dismissBanner: () => void;
+  /** Order ids that arrived by event since load: they slide in highlighted. */
+  freshOrders: ReadonlySet<string>;
+  refresh: () => void;
 }

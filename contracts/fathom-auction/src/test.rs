@@ -153,6 +153,10 @@ fn worked_example() {
         t.seal(&carol, Side::Sell, 4, 15_000 * U, deposit, false), // sells 15,000 at >= $1.04
     ];
     assert_eq!(t.auction.sealed_count(), 4);
+    let listed = t.auction.orders_in(&1);
+    assert_eq!(listed.len(), 4);
+    assert_eq!(listed.get(2).unwrap().side, Side::Sell);
+    assert_eq!(t.auction.orders_in(&99).len(), 0);
 
     t.to_reveal();
     orders.iter().for_each(|o| t.reveal(o));
@@ -307,6 +311,17 @@ fn reveal_checks() {
     t.to_close();
     let late = t.auction.try_reveal(&alice, &greedy.id, &greedy.side, &greedy.tick, &greedy.qty, &greedy.salt);
     assert_eq!(late, Err(Ok(Error::NotRevealWindow)));
+}
+
+#[test]
+fn the_same_commitment_cannot_be_placed_twice() {
+    let t = setup();
+    let alice = t.user();
+    let o = t.seal(&alice, Side::Buy, 4, 1_000 * U, 10_000 * U, false);
+    let c = t.auction.order(&o.id).unwrap().commitment;
+    t.fund(&alice, Side::Buy, 10_000 * U);
+    let again = t.auction.try_place_order(&alice, &c, &t.quote.address, &(10_000 * U), &false);
+    assert_eq!(again, Err(Ok(Error::CommitmentExists)));
 }
 
 #[test]

@@ -110,7 +110,7 @@ for (const c of CASES.filter((x) => !only || x.name.startsWith(only))) {
       return page.screenshot({ fullPage: true });
     };
     const d = await shot(`file://${designHtml}`);
-    const a = await shot(`${APP}${c.route}`, c.act);
+    const a = await shot(`${APP}${c.route}?mock`, c.act);
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
     const r = compare(readPng(d), readPng(a));
     const base = resolve(OUT, `${c.name}-${width}`);

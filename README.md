@@ -30,6 +30,8 @@ cd scripts && npm install
 npm run deploy                 # creates CLI identities fathom-admin / fathom-issuer, tokens, SACs, contracts
 npm run worked-example         # runs the worked example as a real auction on testnet, prints tx links
 npm run replay                 # attack replay: pump DEX ×100, drain Pool A, Pool B rejects
+npm run seed                   # seal a round of bot orders
+npm run auction-loop           # keep auctions running: reveal bots, close, seed
 ```
 
 `deploy` is idempotent: a contract is redeployed only when its WASM or constructor arguments change
@@ -57,8 +59,9 @@ Close and settle are separate because testnet caps events at 16 KB per transacti
 token transfer emits one; a busy close would not fit. Measured: close with 24 orders ≈ 4.8M CPU instructions,
 settle of 8 orders ≈ 5.9M.
 
-A transaction simulated just before a window ends can fail on-chain (it then touches a new auction's
-storage). Clients re-simulate and resend FAILED transactions (`scripts/lib/fathom.ts`).
+A transaction can fail on-chain when the state changed after it was simulated (a window ended, or another
+order landed first). Clients re-simulate and resend FAILED transactions (`scripts/lib/fathom.ts`,
+`app/src/lib/tx.ts`). See "Concurrency notes" below.
 
 Demo mode: `fast_forward()` (admin) ends the current commit window, or the reveal window, immediately.
 
@@ -96,20 +99,50 @@ generated Rust client already defines `try_borrow` for `borrow`.
 
 ## App (`app/`)
 
-Vite + React + TypeScript, ported from `designs/`. Screens: Auction (`/`), Close (`/close`),
-Liquidity (`/liquidity`), Attack replay (`/replay`), How it works (`/how-it-works`).
+Vite + React + TypeScript, ported from `designs/`, reading the testnet contracts.
+Screens: Auction (`/`), Last close (`/close`), Liquidity, Attack replay, How it works.
 
 ```bash
-cd app && npm install
-npm run dev                    # http://localhost:5173
-npm test                       # unit tests (tx retry)
-npm run compare                # screenshots vs designs at 1440/390 → app/.compare/
+cd scripts && npm run demo-server -- --loop    # holds the demo keys; --loop keeps auctions running
+cd app && npm install && npm run dev           # http://localhost:5173 (proxies /demo to the demo server)
 ```
 
-All screen data comes from one hook, `useFathom()`, over the `FathomData` shape in
-`src/data/types.ts`. It currently serves `src/data/mock.ts`, and the header badge says "Mock data" until it
-reads testnet. `src/lib/tx.ts` sends contract calls with the same retry rule as the scripts.
-Differences from the designs, and why: [docs/design-diff.md](docs/design-diff.md).
+- **Wallet:** Freighter on testnet. A wallet on another network blocks ordering and says how to switch.
+  With `?demo` there is also a "Demo wallet" (a testnet burner key kept in this browser, labelled as such).
+- **Salt safety:** an order's opening (side, price, quantity, salt) is saved to localStorage *before* the
+  order is sent; "Download backup" / "Restore" in Your orders. The tab reveals automatically in the reveal
+  window; "Reveal now" with a countdown is always shown, with the 1% penalty warning.
+- **Live updates:** the app polls contract events (`placed`, `closed`, `recorded`, …): new sealed orders
+  slide in, a pink banner announces each close, the dashboard refreshes.
+- **States:** every read shows loading, empty, error (with retry) and data; every transaction shows
+  pending, success with a stellar.expert link, or the error.
+- **`?demo`:** a bottom bar with Seed bot orders, Next auction (ends commits, waits for your reveals,
+  closes and settles, up to the auction on screen) and Run attack replay (each step a real transaction).
+  The demo server holds the admin, bot and attacker keys (Stellar CLI keystore); the browser never does.
+- **`?mock`:** the design numbers, for `npm run compare` (screenshots vs `designs/`).
+
+```bash
+npm test               # unit tests: tx retry, commitment matches the contract
+npm run compare        # screenshots vs designs at 1440/390 → app/.compare/
+node tools/e2e.mjs     # full browser-driven run on testnet; logs every stellar.expert link
+```
+
+Differences from the designs: [docs/design-diff.md](docs/design-diff.md). Last full testnet run:
+[docs/testnet-run.md](docs/testnet-run.md).
+
+### Before presenting
+
+Pool B caps borrowing at 50% of the *lowest* depth over the oracle's window (30 min in the demo). Depth
+added just before the demo does not count until the window has passed: that is the bait-and-switch
+protection. Run `npm run demo-server -- --loop` for at least 30 minutes before presenting so the
+dashboard shows a real cap.
+
+### Concurrency notes
+
+- Order ids are derived from the commitment, not a counter, so concurrent orders touch different keys.
+- `place_order` appends to the auction's order list; clients declare 512 extra write bytes so an order
+  that lands just after another one does not fail ("byte-write resources exceeds amount specified").
+- Transactions that fail on-chain (nothing applied) are re-simulated and resent after a short random wait.
 
 ## Conventions
 

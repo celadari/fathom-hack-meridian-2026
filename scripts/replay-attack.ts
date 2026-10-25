@@ -1,97 +1,30 @@
 // Replay the Feb 2026 YieldBlox pattern on testnet demo contracts:
+//   0. reset: DEX back to $1.04, both pools refilled to $1M
 //   1. pump the thin DEX price ×100 with one trade
 //   2. borrow against pumped USTRY from Pool A (prices at the DEX)    → drained
-//   3. try the same against Pool B (prices at Fathom, capped by depth) → rejected
+//   3. same request to Pool B (prices at Fathom, capped by depth)     → rejected, recorded on-chain
 //
-//   npm run replay              # prints a tx link for every step, including Pool B's recorded rejection
-//
-// Each run first resets the DEX price and refills both pools, so it can be repeated.
-import { Asset, Keypair } from "@stellar/stellar-sdk";
-import { CONFIG, UNIT } from "./config.js";
-import { client, Dyn, fmt, read, txLink, write } from "./lib/fathom.js";
-import { ensureIdentity, ensureTrustlines, readDeployment, topUp } from "./lib/stellar.js";
+//   npm run replay
+import { UNIT } from "./config.js";
+import { ATTACK, replayStep } from "./lib/demo.js";
+import { fmt } from "./lib/fathom.js";
 
-const COLLATERAL = 13_000n * UNIT; // USTRY the attacker posts (~$13.5k at fair value)
-const BORROW = 1_000_000n * UNIT; // USDC the attacker asks for
-const PUMP = 106n * UNIT; // $1.04 → $106
+const REASONS: Record<number, string> = { 1: "No Fathom price", 2: "Depth too low", 3: "Not enough collateral", 4: "Pool empty", 5: "Bad amount" };
 
-const POOL_ERRORS: Record<number, string> = {
-  1: "No Fathom price · borrow rejected",
-  2: "Depth too low · borrow rejected",
-  3: "Not enough collateral · borrow rejected",
-  4: "Pool empty",
-  5: "Bad amount",
-};
-
-async function main() {
-  const d = readDeployment();
-  const admin = ensureIdentity("fathom-admin");
-  const issuer = ensureIdentity("fathom-issuer");
-  const attacker = ensureIdentity("fathom-attacker");
-  await ensureTrustlines(attacker, [new Asset("USTRY", d.issuer), new Asset("USDC", d.issuer)]);
-  await topUp(issuer, attacker.publicKey(), new Asset("USTRY", d.issuer), Number(COLLATERAL / UNIT));
-
-  console.log("0. reset: DEX back to $1.04, pools refilled to $1M");
-  const dexAdmin = await client(d.mock_dex_price, admin);
-  await write(dexAdmin, "trade", { trader: admin.publicKey(), price: CONFIG.ustry.dexStart });
-  const usdc = await client(d.usdc_sac, admin);
-  for (const pool of [d.pool_a, d.pool_b]) {
-    const have = await read<bigint>(usdc, "balance", { id: pool });
-    if (have < CONFIG.pools.tvl) await write(usdc, "transfer", { from: admin.publicKey(), to: pool, amount: CONFIG.pools.tvl - have });
-  }
-
-  const poolA = await client(d.pool_a, attacker);
-  const poolB = await client(d.pool_b, attacker);
-  const oracle = await client(d.oracle, attacker);
-  const ustry = { tag: "Stellar", values: [d.ustry_sac] };
-  const tvl = async (p: Dyn) => fmt(await read<bigint>(p, "tvl"), 0);
-
-  const fathom = await read<{ price: bigint; timestamp: bigint } | undefined>(oracle, "lastprice", { asset: ustry });
-  console.log(`   DEX $${fmt(await read<bigint>(dexAdmin, "price"))} · Fathom $${fathom ? fmt(fathom.price) : "none"} · Pool A $${await tvl(poolA)} · Pool B $${await tvl(poolB)}`);
-
-  console.log("\n1. attacker pumps the DEX with one trade");
-  const pump = await write(await client(d.mock_dex_price, attacker), "trade", { trader: attacker.publicKey(), price: PUMP });
-  const after = await read<{ price: bigint }>(oracle, "lastprice", { asset: ustry });
-  console.log(`   DEX $${fmt(PUMP)} · Fathom still $${fmt(after.price)}  ${txLink(pump.hash)}`);
-
-  console.log(`\n2. Pool A: post ${fmt(COLLATERAL, 0)} USTRY, borrow $${fmt(BORROW, 0)}`);
-  const drain = await write(poolA, "borrow", { user: attacker.publicKey(), collateral_qty: COLLATERAL, borrow_amount: BORROW });
-  console.log(`   approved: Pool A TVL now $${await tvl(poolA)}  ${txLink(drain.hash)}`);
-
-  console.log(`\n3. Pool B: same request (attempt_borrow records the rejection on-chain)`);
-  const dexPrice = await read<bigint>(dexAdmin, "price");
-  const { value: a, hash } = await write<Assessment>(poolB, "attempt_borrow", {
-    user: attacker.publicKey(), collateral_qty: COLLATERAL, borrow_amount: BORROW,
-  });
-  if (a.approved) throw new Error("expected Pool B to reject");
-  console.log(`   rejected, no funds moved  ${txLink(hash)}`);
-  for (const r of a.reasons.map(reasonCode)) {
-    if (r === 3) {
-      const dexValue = (COLLATERAL * dexPrice) / UNIT;
-      console.log(`   · ${POOL_ERRORS[r]}: ${fmt(a.collateral, 0)} USTRY is worth $${fmt(a.collateral_value, 0)} at the Fathom price ` +
-        `($${fmt(a.price)}), not $${fmt(dexValue, 0)} at the DEX price; max loan $${fmt(a.max_loan, 0)} vs $${fmt(a.requested, 0)} asked`);
-    } else if (r === 2) {
-      console.log(`   · ${POOL_ERRORS[r]}: cap ${fmt(a.cap, 0)} USTRY (50% of min depth ${fmt(a.min_depth_window, 0)}) vs ${fmt(a.collateral_after, 0)} requested`);
-    } else {
-      console.log(`   · ${POOL_ERRORS[r]}`);
+for (const n of [0, 1, 2, 3] as const) {
+  const run = await replayStep(n);
+  const s = Object.values(run.steps).at(-1)!;
+  console.log(`${n}. ${s.label}  ${s.link ?? ""}`);
+  if (n === 3 && run.assessment) {
+    const a = run.assessment as Record<string, string> & { reasons: number[] };
+    const big = (k: string) => BigInt(a[k]);
+    for (const r of a.reasons.map(Number)) {
+      if (r === 3) {
+        const dexValue = (ATTACK.collateral * ATTACK.pump) / UNIT;
+        console.log(`   · ${REASONS[r]}: ${fmt(big("collateral"), 0)} USTRY is worth $${fmt(big("collateral_value"), 0)} at the Fathom price, not $${fmt(dexValue, 0)} at the DEX price; max loan $${fmt(big("max_loan"), 0)} vs $${fmt(big("requested"), 0)} asked`);
+      } else if (r === 2) {
+        console.log(`   · ${REASONS[r]}: cap ${fmt(big("cap"), 0)} USTRY (50% of min depth ${fmt(big("min_depth_window"), 0)}) vs ${fmt(big("collateral_after"), 0)} requested`);
+      } else console.log(`   · ${REASONS[r]}`);
     }
   }
-  console.log(`   Pool B TVL still $${await tvl(poolB)}`);
 }
-
-type Assessment = {
-  approved: boolean; reasons: unknown[]; price: bigint; collateral: bigint; collateral_value: bigint;
-  max_loan: bigint; requested: bigint; cap: bigint; collateral_after: bigint; min_depth_window: bigint;
-};
-
-/** Reasons decode as their u32 values (or {tag} for some SDK versions). */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function reasonCode(r: any): number {
-  return typeof r === "number" ? r : Number(r?.tag ?? r);
-}
-
-
-main().catch((e) => {
-  console.error(e);
-  process.exit(1);
-});

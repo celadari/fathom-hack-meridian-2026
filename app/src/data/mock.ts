@@ -1,13 +1,11 @@
-// Mock data for phase 4: the worked example and the numbers the designs show.
-// The only file to replace with contract reads in phase 5.
-import type { FathomData } from "./types";
+// Mock data: the worked example and the numbers the designs show. Used only with
+// ?mock (the screenshot comparison against designs/); the header then says "Mock data".
+import type { AuctionView, CloseView, LiquidityView, ReplayView } from "./types";
 
 const now = Date.now();
 const min = 60_000;
 
-export const MOCK: FathomData = {
-  source: "mock",
-
+export const MOCK: { auction: AuctionView; close: CloseView; liquidity: LiquidityView; replay: ReplayView } = {
   auction: {
     id: 142,
     base: "USTRY",
@@ -27,10 +25,16 @@ export const MOCK: FathomData = {
     ],
     depositSizes: [10_000, 50_000, 250_000],
     standingDays: 7,
+    closing: { id: 142, commitEnd: now + (2 * 60 + 14) * min + 37_000, revealEnd: now + (2 * 60 + 15) * min + 37_000 },
+    revealSecs: 60,
+    penaltyPct: 1,
+    grid: { min: 0.9, tick: 0.01, ticks: 31 },
+    lastClosed: 141,
   },
 
   close: {
     auction: 141,
+    cleared: true,
     closedAt: Date.UTC(2026, 9, 25, 16, 0),
     price: 1.04,
     matched: 30_000,
@@ -82,9 +86,11 @@ export const MOCK: FathomData = {
     fathomPrice: 1.04,
     depth: 24_800,
     poolTvl: 1_000_000,
+    poolATvl: 1_000_000,
     collateral: 13_000,
     borrow: 1_000_000,
     ltvPct: 75,
+    capSharePct: 50,
     assessment: {
       reasons: ["DepthTooLow", "InsufficientCollateral"],
       fathomPrice: 1.04,
@@ -97,5 +103,6 @@ export const MOCK: FathomData = {
       minDepthWindow: 24_800,
     },
     txs: {},
+    values: "scenario",
   },
 };

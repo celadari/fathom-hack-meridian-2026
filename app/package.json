@@ -12,6 +12,7 @@
     "frames": "node tools/frames.mjs"
   },
   "dependencies": {
+    "@aztec/bb.js": "0.87.0",
     "@stellar/freighter-api": "6.0.1",
     "@stellar/stellar-sdk": "17.4.0",
     "react": "19.3.1",

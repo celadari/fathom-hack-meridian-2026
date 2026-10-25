@@ -13,14 +13,14 @@ describe("sendWithRetry", () => {
   it("re-simulates and resends after an on-chain FAILED", async () => {
     const build = vi.fn().mockResolvedValueOnce(tx("FAILED", 0, "f1")).mockResolvedValueOnce(tx("SUCCESS", 42, "ok"));
     const onRetry = vi.fn();
-    await expect(sendWithRetry(build, { onRetry })).resolves.toEqual({ value: 42, hash: "ok" });
+    await expect(sendWithRetry(build, { onRetry, backoffMs: () => 0 })).resolves.toEqual({ value: 42, hash: "ok" });
     expect(build).toHaveBeenCalledTimes(2);
     expect(onRetry).toHaveBeenCalledWith("f1", 1);
   });
 
   it("gives up after the last attempt", async () => {
     const build = vi.fn(async () => tx("FAILED", 0));
-    await expect(sendWithRetry(build, { attempts: 3 })).rejects.toBeInstanceOf(TxError);
+    await expect(sendWithRetry(build, { attempts: 3, backoffMs: () => 0 })).rejects.toBeInstanceOf(TxError);
     expect(build).toHaveBeenCalledTimes(3);
   });
 

@@ -40,5 +40,35 @@ No screen scrolls horizontally at 390 px. Nothing from the designs was dropped.
 ## Layout
 
 - **How it works at 390 px:** one column instead of two. The design keeps two columns on phones, which squeezes the text to a few words per line and shrinks the drawings. This is the only phone-specific CSS.
-- **Headers:** the designs use two header styles (Main and Explainer: large links; Close, Dashboard and Replay: pill links + badge). Ported as drawn; worth unifying.
+- **Headers (decided):** every screen uses the Main / How it works header. The search bar is an asset
+  switcher (USTRY live, GOLDX "soon"), with a "Stellar testnet · demo" pill and the wallet button (short
+  address when connected). "Last close" is added to the nav. Close, Liquidity and Replay therefore differ
+  from their designs in the header row.
 - **Explainer CSS:** its animation classes clash with the other screens', so they are scoped under `.fx` with `fx-` keyframes. Same visuals.
+
+## Phase 5 (wired to testnet)
+
+Measured with `?mock` (the design numbers) so only layout and copy are compared:
+
+| Screen | 1440 px | 390 px |
+|---|---|---|
+| Auction | 1.66% | 11.07% |
+| Auction, after sealing | 2.08% | 12.69% |
+| Close | 3.33% | 8.06% |
+| Liquidity | 4.12% | 7.59% |
+| Replay | 5.90% | 11.54% |
+| Replay, step 3 | 6.33% | 10.23% |
+| How it works | 4.15% | 7.75% |
+
+The increase from phase 4 is the unified header (more items, wraps to two rows on phones) plus these
+additions; nothing from the designs was dropped:
+
+- **Auction:** "See last close · auction #N →" under the stats; "Your orders" panel (reveal status, Reveal
+  now with countdown, 1% warning, backup/restore); funding steps for a fresh account; the seal panel's third
+  step says the zero-knowledge proof arrives in the next build (dashed "ZK" circle instead of the green check).
+  In `?mock` the list has no "just now" row (on testnet the new order slides in from the `placed` event).
+- **Close banner** under the header on every screen after a close event.
+- **Replay:** a line saying whether the run is live on testnet or a simulated scenario; "real event" added to
+  the "under $1 of hourly volume" label (that number is not from our contracts).
+- **How it works:** "illustrations use example numbers (simulated)" next to "Behind the screen".
+- **Close:** standing bids that did not fill read "Stays in the book as a standing order (counts as depth)".

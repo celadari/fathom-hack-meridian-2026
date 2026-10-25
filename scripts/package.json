@@ -6,7 +6,10 @@
     "deploy": "tsx deploy.ts",
     "worked-example": "tsx worked-example.ts",
     "replay": "tsx replay-attack.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "seed": "tsx seed.ts",
+    "auction-loop": "tsx auction-loop.ts",
+    "demo-server": "tsx demo-server.ts"
   },
   "dependencies": {
     "@stellar/stellar-sdk": "17.4.0"
