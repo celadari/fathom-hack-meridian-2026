@@ -46,7 +46,7 @@ try {
   await page.waitForFunction(() => /G[A-Z2-7]{3}…/.test(document.querySelector("header")?.textContent ?? ""), null, { timeout: 10_000 });
 
   // Wait until the account check settles: either a funding step or the seal button.
-  const ready = () => page.waitForFunction(() => /Fund with Friendbot|Add trustlines|Get demo tokens|Lock & seal order/.test(document.body.innerText), null, { timeout: 60_000 });
+  const ready = () => page.waitForFunction(() => (/Fund with Friendbot|Add trustlines|Get demo tokens/.test(document.body.innerText) || !/Reading your account|Checking your balance/.test(document.body.innerText)) && /G[A-Z2-7]{3}…/.test(document.querySelector("header")?.textContent ?? ""), null, { timeout: 60_000 });
   for (let i = 0; i < 4; i++) {
     await ready();
     const step = page.getByRole("button", { name: /Fund with Friendbot|Add trustlines|Get demo tokens/ });

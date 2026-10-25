@@ -31,7 +31,8 @@ async function poll() {
     const filters = [{ type: "contract" as const, contractIds: WATCHED() }];
     const res = cursor
       ? await server.getEvents({ cursor, filters, limit: 100 })
-      : await server.getEvents({ startLedger: (await server.getLatestLedger()).sequence - 5, filters, limit: 100 });
+      : // Start at the current ledger: events from before this page loaded are already in the reads.
+        await server.getEvents({ startLedger: (await server.getLatestLedger()).sequence, filters, limit: 100 });
     cursor = res.cursor;
     lastError = null;
     const closed = Number(res.latestLedgerCloseTime) * 1000;

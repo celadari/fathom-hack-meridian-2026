@@ -76,7 +76,9 @@ function AuctionRoom({ a }: { a: AuctionView }) {
   if (source === "mock") block = null; // mock: the button only plays the panel (design comparison)
   else if (!wallet.address) block = null; // the button connects
   else if (wallet.wrongNetwork) block = "Switch Freighter to testnet";
-  else if (!qty || !onGrid) block = !qty ? "Enter a quantity" : `Price must be on the $${a.grid.tick.toFixed(2)} grid`;
+  else if (!qty) block = "Enter a quantity";
+  else if (!priceText[side].trim()) block = "Enter a limit price";
+  else if (!onGrid) block = `Price must be on the $${a.grid.tick.toFixed(2)} grid`;
   else if (!deposit) block = `Above the largest deposit (${fmtInt(a.depositSizes[a.depositSizes.length - 1])})`;
   else if (!account.status) block = account.error ? "Could not read your balance" : "Checking your balance…";
   else if (balance < deposit) block = `Not enough ${lockTok} (you have ${fmtInt(balance)})`;
@@ -135,7 +137,7 @@ function AuctionRoom({ a }: { a: AuctionView }) {
           </div>
           <span style={{ color: "#7D7D7D", fontSize: "14px" }}>
             <label htmlFor="limit">{buy ? "Max price" : "Min price"}</label> $
-            <input id="limit" inputMode="decimal" value={priceText[side]} placeholder="0.000" onChange={(e) => { setPriceText({ ...priceText, [side]: e.target.value }); setPriceEdited({ ...priceEdited, [side]: true }); }} style={priceInput} />
+            <input id="limit" inputMode="decimal" value={priceText[side]} placeholder="enter" onChange={(e) => { setPriceText({ ...priceText, [side]: e.target.value }); setPriceEdited({ ...priceEdited, [side]: true }); }} style={priceInput} />
             {!priceEdited[side] && priceText[side] && <span style={{ fontSize: "12px" }}> (from Fathom price{side === "sell" ? " − 1 tick" : ""})</span>}
             {" "}· NAV {a.nav ? fmtUsd(a.nav) : "—"} <SetByUs title={NAV_TITLE} />
           </span>
@@ -216,7 +218,7 @@ function AuctionRoom({ a }: { a: AuctionView }) {
             ))}
             <g fontSize="11" fill="#7D7D7D">
               <line x1="600" y1="70" x2="600" y2="250" stroke="#131313" strokeOpacity=".25" />
-              <text x="606" y="64" textAnchor="end" fontSize="10">USTRY depth</text>
+              <text x="612" y="259" textAnchor="end" fontSize="10">USTRY depth</text>
               {ticks.map((t) => (
                 <g key={t.y}><line x1="594" y1={t.y} x2="606" y2={t.y} stroke="#131313" strokeOpacity=".25" /><text x="590" y={t.y + 4} textAnchor="end">{t.label}</text></g>
               ))}

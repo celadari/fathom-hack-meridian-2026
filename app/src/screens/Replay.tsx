@@ -56,6 +56,8 @@ function ReplayRoom({ r }: { r: ReplayView }) {
   const dexShown = live ? r.dexStart : s === 0 ? dexStart : r.pumpPrice;
   const poolATvl = live ? r.poolATvl : s === 3 ? 0 : r.poolTvl;
   const dexValue = r.collateral * r.pumpPrice;
+  // Live mode can open on the state a previous replay left behind (DEX pumped, Pool A drained).
+  const leftover = live && s === 0 && (Math.abs(r.dexStart - dexStart) > 1e-9 || r.poolATvl < r.poolTvl);
 
   const step = useCallback(async (from: number) => {
     if (!live) return setS(Math.min(from + 1, 3));
@@ -189,7 +191,7 @@ function ReplayRoom({ r }: { r: ReplayView }) {
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
             <h2 style={{ margin: 0, fontSize: "20px", fontWeight: 600 }}>Pool A</h2>
             <span style={{ fontSize: "13px", color: "#7D7D7D" }}>reads last DEX trade</span>
-            <span style={s === 0 ? green : s === 3 ? red : amber}>{s === 0 ? "Normal" : s === 3 ? "Drained" : "Price spike"}</span>
+            <span style={leftover ? amber : s === 0 ? green : s === 3 ? red : amber}>{leftover ? "Left from last replay" : s === 0 ? "Normal" : s === 3 ? "Drained" : "Price spike"}</span>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "16px" }}>
             <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}><span style={{ fontSize: "12px", color: "#7D7D7D" }}>{base} price it sees <SetByUs title={DEX_TITLE} /></span>
@@ -197,7 +199,7 @@ function ReplayRoom({ r }: { r: ReplayView }) {
             <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}><span style={{ fontSize: "12px", color: "#7D7D7D" }}>Pool funds (TVL)</span><span style={{ fontVariantNumeric: "tabular-nums", fontSize: "28px" }}>{poolATvl < 1 ? "$0" : `$${fmtK(poolATvl)}`}</span></div>
           </div>
           <div style={{ height: "10px", borderRadius: "5px", background: "#F0F0F0", overflow: "hidden" }}><div style={{ height: "100%", transition: "width 1.8s ease-in, background .4s", background: s === 3 ? "#E5484D" : "#40B66B", width: s === 3 ? "0%" : "100%" }} /></div>
-          <p style={{ margin: 0, fontSize: "14px", color: "#535353", minHeight: "44px" }}>{aNotes[s]}</p>
+          <p style={{ margin: 0, fontSize: "14px", color: "#535353", minHeight: "44px" }}>{leftover ? `Live reads left by the previous replay. Starting the replay first resets the DEX to ${fmtUsd(dexStart)} and refills the pools.` : aNotes[s]}</p>
           {s === 3 && links.poolA?.link && <a href={links.poolA.link} target="_blank" rel="noreferrer" style={txLink}>Loan transaction on stellar.expert</a>}
         </section>
 

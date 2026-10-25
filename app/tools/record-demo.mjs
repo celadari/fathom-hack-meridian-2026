@@ -48,7 +48,7 @@ await loaded(w);
 await w.getByRole("button", { name: "Connect", exact: true }).click();
 await w.getByRole("menuitem", { name: /Demo wallet/ }).click();
 for (let i = 0; i < 4; i++) {
-  await w.waitForFunction(() => /Fund with Friendbot|Add trustlines|Get demo tokens|Lock & seal order/.test(document.body.innerText), null, { timeout: 60_000 });
+  await w.waitForFunction(() => (/Fund with Friendbot|Add trustlines|Get demo tokens/.test(document.body.innerText) || !/Reading your account|Checking your balance/.test(document.body.innerText)) && /G[A-Z2-7]{3}…/.test(document.querySelector("header")?.textContent ?? ""), null, { timeout: 60_000 });
   const step = w.getByRole("button", { name: /Fund with Friendbot|Add trustlines|Get demo tokens/ });
   if (!(await step.count())) break;
   const name = await step.innerText();
@@ -56,10 +56,22 @@ for (let i = 0; i < 4; i++) {
   await step.click();
   await w.waitForFunction((n) => ![...document.querySelectorAll("button")].some((b) => b.textContent === n), name, { timeout: 90_000 });
 }
-log("  close any open auction so the recording starts on a fresh one");
-await w.getByRole("button", { name: "Next auction" }).click();
-await idle(w, 300_000);
-log("  seed bot orders");
+// Two full auction cycles so the oracle has a published price and depth history on screen.
+for (let i = 1; i <= 2; i++) {
+  log(`  auction cycle ${i}: seed bots, next auction`);
+  await w.getByRole("button", { name: "Seed bot orders" }).click();
+  await idle(w, 240_000);
+  await w.getByRole("button", { name: "Next auction" }).click();
+  await idle(w, 300_000);
+}
+log("  reset the replay (DEX price, pools)");
+await w.goto(`${APP}/replay?demo`, { waitUntil: "networkidle" });
+await loaded(w);
+await w.getByRole("button", { name: "Reset" }).click();
+await w.waitForFunction(() => !/Resetting/.test(document.body.innerText), null, { timeout: 120_000 });
+await w.goto(`${APP}/?demo`, { waitUntil: "networkidle" });
+await loaded(w);
+log("  seed bot orders for the recorded auction");
 await w.getByRole("button", { name: "Seed bot orders" }).click();
 await idle(w, 240_000);
 const state = await warm.storageState();
