@@ -88,6 +88,12 @@ feed use the median itself, with no haircut.
 Both use LTV 75% (each pool's own choice) and share error codes: 1 no price, 2 depth too low,
 3 not enough collateral, 4 pool empty, 5 bad amount.
 
+Pool B's `assess` returns every failed check with its numbers (collateral value at the Fathom price,
+max loan, depth cap vs requested). `borrow` fails with the first reason. `attempt_borrow` does the
+same checks but records a rejection on-chain (a `borrow_rejected` event with every reason, no funds
+moved), so the replay has a transaction to link to. It is not called `try_borrow` because Soroban's
+generated Rust client already defines `try_borrow` for `borrow`.
+
 ## Conventions
 
 All prices are 7-decimal fixed point (`$1.06 = 10_600_000`), like Stellar token amounts.

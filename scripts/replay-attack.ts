@@ -3,7 +3,7 @@
 //   2. borrow against pumped USTRY from Pool A (prices at the DEX)    → drained
 //   3. try the same against Pool B (prices at Fathom, capped by depth) → rejected
 //
-//   npm run replay              # prints tx hashes; Pool B's rejection comes from simulation
+//   npm run replay              # prints a tx link for every step, including Pool B's recorded rejection
 //
 // Each run first resets the DEX price and refills both pools, so it can be repeated.
 import { Asset, Keypair } from "@stellar/stellar-sdk";
@@ -58,25 +58,38 @@ async function main() {
   const drain = await write(poolA, "borrow", { user: attacker.publicKey(), collateral_qty: COLLATERAL, borrow_amount: BORROW });
   console.log(`   approved: Pool A TVL now $${await tvl(poolA)}  ${txLink(drain.hash)}`);
 
-  console.log(`\n3. Pool B: same request`);
-  const cap = await read<Record<string, bigint>>(poolB, "cap_status");
-  console.log(`   Fathom min depth ${fmt(cap.min_depth_window, 0)} → cap ${fmt(cap.cap, 0)} USTRY (50%), already used ${fmt(cap.used, 0)}`);
-  const tx = await poolB.borrow({ user: attacker.publicKey(), collateral_qty: COLLATERAL, borrow_amount: BORROW });
-  const code = errorCode(tx.result) ?? errorCode(tx.simulation);
-  if (code === undefined) throw new Error(`expected Pool B to reject, got ${JSON.stringify(tx.result)}`);
-  console.log(`   rejected with Error #${code}: ${POOL_ERRORS[code]} (simulated on testnet RPC; no funds moved)`);
+  console.log(`\n3. Pool B: same request (attempt_borrow records the rejection on-chain)`);
+  const dexPrice = await read<bigint>(dexAdmin, "price");
+  const { value: a, hash } = await write<Assessment>(poolB, "attempt_borrow", {
+    user: attacker.publicKey(), collateral_qty: COLLATERAL, borrow_amount: BORROW,
+  });
+  if (a.approved) throw new Error("expected Pool B to reject");
+  console.log(`   rejected, no funds moved  ${txLink(hash)}`);
+  for (const r of a.reasons.map(reasonCode)) {
+    if (r === 3) {
+      const dexValue = (COLLATERAL * dexPrice) / UNIT;
+      console.log(`   · ${POOL_ERRORS[r]}: ${fmt(a.collateral, 0)} USTRY is worth $${fmt(a.collateral_value, 0)} at the Fathom price ` +
+        `($${fmt(a.price)}), not $${fmt(dexValue, 0)} at the DEX price; max loan $${fmt(a.max_loan, 0)} vs $${fmt(a.requested, 0)} asked`);
+    } else if (r === 2) {
+      console.log(`   · ${POOL_ERRORS[r]}: cap ${fmt(a.cap, 0)} USTRY (50% of min depth ${fmt(a.min_depth_window, 0)}) vs ${fmt(a.collateral_after, 0)} requested`);
+    } else {
+      console.log(`   · ${POOL_ERRORS[r]}`);
+    }
+  }
   console.log(`   Pool B TVL still $${await tvl(poolB)}`);
 }
 
-/** Extract a contract error code from a client result or failed simulation. */
+type Assessment = {
+  approved: boolean; reasons: unknown[]; price: bigint; collateral: bigint; collateral_value: bigint;
+  max_loan: bigint; requested: bigint; cap: bigint; collateral_after: bigint; min_depth_window: bigint;
+};
+
+/** Reasons decode as their u32 values (or {tag} for some SDK versions). */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function errorCode(x: any): number | undefined {
-  const text = typeof x === "object" && x !== null ? (x.error?.message ?? x.error ?? JSON.stringify(x)) : String(x);
-  const m = /Error\(Contract, #(\d+)\)/.exec(String(text));
-  if (m) return Number(m[1]);
-  if (typeof x?.error?.code === "number") return x.error.code;
-  return undefined;
+function reasonCode(r: any): number {
+  return typeof r === "number" ? r : Number(r?.tag ?? r);
 }
+
 
 main().catch((e) => {
   console.error(e);
