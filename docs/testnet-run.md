@@ -50,3 +50,23 @@ Each close transaction also carries the oracle's `recorded` event (the push); Po
 
 Earlier the same morning (#64–#84) a local Docker Compose server was still looping on the same testnet keys;
 the two loops collided (RPC `TRY_AGAIN_LATER`), so those auctions are not counted here.
+
+## Confidential deposits on testnet, 2026-10-26
+
+Stack: `deployments/testnet-confidential.json` (OpenZeppelin stellar-confidential 0.8.0). Auction #2: 8 bot
+orders sealed as confidential deposits, revealed, closed, 9 payouts proved (~1.5 s each) and paid. Auction #5:
+the same through the browser with a burner wallet (seal, auto-reveal, close, 10 payouts, dashboard, replay).
+
+| Step | Transaction |
+|---|---|
+| bob: confidential deposit sealed (place_order_confidential) | [ba19606ae6…](https://stellar.expert/explorer/testnet/tx/ba19606ae62a73df12c1572acb36cd353c7c3dfc915d76ec037fd754e1d235b9) |
+| bob: revealed, opening checked against c_transfer | [f982a5c039…](https://stellar.expert/explorer/testnet/tx/f982a5c039496a2451d9fbbd3534659b3c5671e699b9dfe9022104bfed19d605) |
+| auction #2 closed | [78c5ba333e…](https://stellar.expert/explorer/testnet/tx/78c5ba333e2cdaa2bc4aa83f1a1e2419fb124bcb674559947be977714c857102) |
+| auction merged its received deposits | [b2d04de3d4…](https://stellar.expert/explorer/testnet/tx/b2d04de3d406c86eeee7bc669bc62f3ff9821c8370449f97a2ea4936db6fe86b) |
+| paid bob's USDC (proved transfer, pay_confidential) | [7132f8adfd…](https://stellar.expert/explorer/testnet/tx/7132f8adfd67ebac811fc949660736a5105636293e79e0bad3f00fc6747d4cc6) |
+| paid alice's USTRY | [f20993c106…](https://stellar.expert/explorer/testnet/tx/f20993c106b21955553a1850f49a63c86ce6da9f07563bf3a559e1eff0bacd67) |
+| browser (burner): confidential USDC deposit sealed, standing | [7229e7c61c…](https://stellar.expert/explorer/testnet/tx/7229e7c61cde53f5ebb4dda9e455355d50d74ab0ff2310f8bed7d051fb412866) |
+| browser: auto-reveal with the opening | [1e33ddbd29…](https://stellar.expert/explorer/testnet/tx/1e33ddbd2921a6df4a24f393faa7e3008824dada7015c0e92f8eaa2d795eebd8) |
+| auction #5 closed | [0f66f863db…](https://stellar.expert/explorer/testnet/tx/0f66f863db6ad001102688550d496705b99080d2806b72d718c4032523b32b30) |
+| paid the browser order's USTRY fill | [3a4f03b3ee…](https://stellar.expert/explorer/testnet/tx/3a4f03b3ee086ac64aedef454c633fccfe156272f23b5c919f242965533768f9) |
+| attack replay: pump | [21b0b87d60…](https://stellar.expert/explorer/testnet/tx/21b0b87d60e24dcda27767a6bf0e4e4d8c8e10810b090109241c5c1c74120444) |

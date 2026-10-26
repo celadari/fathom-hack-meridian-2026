@@ -17,6 +17,12 @@ const rows = [
   ["USDC (SAC)", d.usdc_sac, "demo token"],
   ["order verifier", d.order_verifier, "rs-soroban-ultrahonk with circuits/order's vk (verifier demo)"],
   ["issuer", d.issuer, "issues the demo tokens"],
+  ...(d.conf_usdc ? [
+    ["cUSDC (confidential)", d.conf_usdc, "OpenZeppelin confidential token wrapping USDC"],
+    ["cUSTRY (confidential)", d.conf_ustry, "OpenZeppelin confidential token wrapping USTRY"],
+    ["confidential verifier", d.conf_verifier, "OpenZeppelin UltraHonk verifier (non-ZK), 6 circuit VKs"],
+    ["confidential auditor", d.conf_auditor, "OpenZeppelin auditor key registry"],
+  ] : []),
 ];
 const table = ["| Contract | ID | Role |", "|---|---|---|", ...rows.map(([n, id, r]) => `| ${n} | ${link(id)} | ${r} |`)].join("\n");
 const p = resolve(ROOT, "README.md");

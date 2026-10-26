@@ -43,9 +43,11 @@ flowchart LR
   DS -- "bot orders, reveals, close, replay txs" --> Stellar
 ```
 
-- **Sealing happens in the browser.** Only the commitment and a fixed-size deposit (10K / 50K / 250K)
-  go on-chain; the opening (side, price, quantity, salt) is stored locally before sending and revealed
-  from the browser in the reveal window.
+- **Sealing happens in the browser.** Only the commitment and a deposit go on-chain. By default the
+  deposit is a **confidential transfer** of any amount (OpenZeppelin confidential tokens wrapping USDC /
+  USTRY, see [Confidential deposits](#confidential-deposits-default)); with `CONFIDENTIAL_DEPOSITS=false`
+  it is a fixed-size escrow (10K / 50K / 250K). The opening (side, price, quantity, salt, and the
+  deposit's blinding) is stored locally before sending and revealed from the browser in the reveal window.
 - **Push, not pull.** After each close the auction pushes one report to the oracle. The oracle stores
   everything per asset; its reads (`lastprice`, `depth`, `liquidity`) never call another contract.
 - **Pools read the oracle.** Pool B values collateral at Fathom's price and caps total USTRY collateral
@@ -55,19 +57,26 @@ flowchart LR
 
 ## Contract IDs (testnet)
 
+The default stack (`CONFIDENTIAL_DEPOSITS`, `deployments/testnet-confidential.json`). The fixed-size
+stack's IDs are in `deployments/testnet.json`.
+
 <!-- contract-ids:start -->
 | Contract | ID | Role |
 |---|---|---|
-| fathom-auction | [`CDLLGJQUQ2SNV6267S7TSLS3IU6ASGOQP6MKCLMUEHC4D7DFLVNDFDEI`](https://stellar.expert/explorer/testnet/contract/CDLLGJQUQ2SNV6267S7TSLS3IU6ASGOQP6MKCLMUEHC4D7DFLVNDFDEI) | sealed orders, reveal, clearing, settlement |
-| fathom-oracle | [`CDVMYAYRRQC2QJDBGNHUD54SA2DMJJQJR2W5IAFVQGA3SDPZ4I3O6LXY`](https://stellar.expert/explorer/testnet/contract/CDVMYAYRRQC2QJDBGNHUD54SA2DMJJQJR2W5IAFVQGA3SDPZ4I3O6LXY) | SEP-40 price + depth |
-| demo-pool-a | [`CA2FYHX4E5MQZB7RJOQR7P6CJZS57GGMP7NTGOA4R4VZPFQHEZQRPYAU`](https://stellar.expert/explorer/testnet/contract/CA2FYHX4E5MQZB7RJOQR7P6CJZS57GGMP7NTGOA4R4VZPFQHEZQRPYAU) | naive lender (DEX price) |
-| demo-pool-b | [`CAD4UVA3IBEQIWCGABQS72TXKNE3ICOKU3ESRFFXAEU5PCQKPFGUVVVZ`](https://stellar.expert/explorer/testnet/contract/CAD4UVA3IBEQIWCGABQS72TXKNE3ICOKU3ESRFFXAEU5PCQKPFGUVVVZ) | Fathom lender (price + depth cap) |
-| mock-nav | [`CAI3KKLOO5L6J3DGTNK7BASTWD67CNE7YMCOUFDNZOEQ3PW77MWMDOAV`](https://stellar.expert/explorer/testnet/contract/CAI3KKLOO5L6J3DGTNK7BASTWD67CNE7YMCOUFDNZOEQ3PW77MWMDOAV) | USTRY NAV, demo feed set by us |
-| mock-dex-price | [`CCKQ7A3LPDOC75PCWMIIVG6YBUUFZSJEGTFOHYTHNFPTBGTBVRFMMHQ4`](https://stellar.expert/explorer/testnet/contract/CCKQ7A3LPDOC75PCWMIIVG6YBUUFZSJEGTFOHYTHNFPTBGTBVRFMMHQ4) | thin DEX last price, demo feed |
+| fathom-auction | [`CD66PTNIW7PY32N4OUKRFQJXHVDW5FBD2UZQG6AFHUTQVOU24QXE5GEM`](https://stellar.expert/explorer/testnet/contract/CD66PTNIW7PY32N4OUKRFQJXHVDW5FBD2UZQG6AFHUTQVOU24QXE5GEM) | sealed orders, reveal, clearing, settlement |
+| fathom-oracle | [`CCHVIQYCZZXVHSEXRLHV53GIGACOLENCFNHJNBICS4JYJMZBDEYKS5PS`](https://stellar.expert/explorer/testnet/contract/CCHVIQYCZZXVHSEXRLHV53GIGACOLENCFNHJNBICS4JYJMZBDEYKS5PS) | SEP-40 price + depth |
+| demo-pool-a | [`CB2XYQYVE5ZQEJSKFXNB47HKHNKW5WP2PCPMYRGVSZ2PKMBW5HCGGQ5P`](https://stellar.expert/explorer/testnet/contract/CB2XYQYVE5ZQEJSKFXNB47HKHNKW5WP2PCPMYRGVSZ2PKMBW5HCGGQ5P) | naive lender (DEX price) |
+| demo-pool-b | [`CCUGEO27VXVN3EEISUZ2HNGOA4BNAM427ABIEMAPIWBJXGA3KDY7PG4B`](https://stellar.expert/explorer/testnet/contract/CCUGEO27VXVN3EEISUZ2HNGOA4BNAM427ABIEMAPIWBJXGA3KDY7PG4B) | Fathom lender (price + depth cap) |
+| mock-nav | [`CDLLSBQXPVPRT4DM3MVOLAPQRJ72T44YWM2HSHVSEWKCDJGD37NU2E5T`](https://stellar.expert/explorer/testnet/contract/CDLLSBQXPVPRT4DM3MVOLAPQRJ72T44YWM2HSHVSEWKCDJGD37NU2E5T) | USTRY NAV, demo feed set by us |
+| mock-dex-price | [`CDJNBL45S4OZABEBIH7ERSMXCSNE5QDIBGE35KIEIKOCHUBOVGQOFPQG`](https://stellar.expert/explorer/testnet/contract/CDJNBL45S4OZABEBIH7ERSMXCSNE5QDIBGE35KIEIKOCHUBOVGQOFPQG) | thin DEX last price, demo feed |
 | USTRY (SAC) | [`CBMXMNLBQVECQ2G7USMEUIB6QLBEXEJF5M4BK4LGG53PYPJCTY5FPJWV`](https://stellar.expert/explorer/testnet/contract/CBMXMNLBQVECQ2G7USMEUIB6QLBEXEJF5M4BK4LGG53PYPJCTY5FPJWV) | demo token |
 | USDC (SAC) | [`CBDCVIPPYUN5JZ5FHLXADKE34OHXXHPPBWUROJ53BGGAZLTQ5KCESXE2`](https://stellar.expert/explorer/testnet/contract/CBDCVIPPYUN5JZ5FHLXADKE34OHXXHPPBWUROJ53BGGAZLTQ5KCESXE2) | demo token |
 | order verifier | [`CCFQPYDC7JKJPEIR6PQLT2VF4U2GRYGIK5QCNEUTRUVBGU6L63GRKFTA`](https://stellar.expert/explorer/testnet/contract/CCFQPYDC7JKJPEIR6PQLT2VF4U2GRYGIK5QCNEUTRUVBGU6L63GRKFTA) | rs-soroban-ultrahonk with circuits/order's vk (verifier demo) |
 | issuer | [`GDSK6TCBLJJBAK4KG5BHKTSOZTMIONTJAOCTSHZM6U55M7J4S3OQB3SF`](https://stellar.expert/explorer/testnet/account/GDSK6TCBLJJBAK4KG5BHKTSOZTMIONTJAOCTSHZM6U55M7J4S3OQB3SF) | issues the demo tokens |
+| cUSDC (confidential) | [`CCRMWYI4NHQMPYGVTL5MSBS5SJUZYPYEX52KJ4RXLT6S7LNY5Y7R24F6`](https://stellar.expert/explorer/testnet/contract/CCRMWYI4NHQMPYGVTL5MSBS5SJUZYPYEX52KJ4RXLT6S7LNY5Y7R24F6) | OpenZeppelin confidential token wrapping USDC |
+| cUSTRY (confidential) | [`CDASZDGFIAKR3Q443BLI67IMG7OZKQYFABZBEO5ZO3BC4RQ5OYHD4ZTE`](https://stellar.expert/explorer/testnet/contract/CDASZDGFIAKR3Q443BLI67IMG7OZKQYFABZBEO5ZO3BC4RQ5OYHD4ZTE) | OpenZeppelin confidential token wrapping USTRY |
+| confidential verifier | [`CBP2U65323GODHUBALNCZSQZZJBYEM6EB37GQGY5JPVKWEAOADQLJOYN`](https://stellar.expert/explorer/testnet/contract/CBP2U65323GODHUBALNCZSQZZJBYEM6EB37GQGY5JPVKWEAOADQLJOYN) | OpenZeppelin UltraHonk verifier (non-ZK), 6 circuit VKs |
+| confidential auditor | [`CDALVDWVEQI56NRDAFO2GU5YD77KFNNWNFEMLWSAZYVPWBBNIMLZU7AM`](https://stellar.expert/explorer/testnet/contract/CDALVDWVEQI56NRDAFO2GU5YD77KFNNWNFEMLWSAZYVPWBBNIMLZU7AM) | OpenZeppelin auditor key registry |
 <!-- contract-ids:end -->
 
 ## Run it
@@ -128,9 +137,19 @@ Federation): see [infra/README.md](infra/README.md).
 
 ## Honest limits
 
-- **Visible on-chain:** each order's **side** (USDC deposit = buy, USTRY = sell) and **deposit size** (one
-  of three fixed sizes). Price and quantity are hidden until the close. Confidential token deposits would
-  hide size and side; not in this build.
+- **Visible on-chain:** each order's **side** (cUSDC deposit = buy, cUSTRY = sell). Price, quantity and
+  (by default) the deposit amount are hidden until the reveal; amounts become public at the reveal and
+  close. Wrapping public tokens into the confidential token is public (its amount shows), so wrap a round
+  float ahead of time, not each order.
+- **The demo settlement server can see amounts.** The auction cannot make proofs (that needs its spending
+  key, and a contract cannot keep a secret), so the server holds the auction's key: it decrypts deposits
+  sent to the auction as they arrive and proves every payout. It cannot send funds anywhere but to the
+  order's owner, for the amount the close recorded: the contract checks each payout's opening. If it stops,
+  payouts wait and resume.
+- **Confidential-token proofs are not zero-knowledge yet.** They are UltraHonk proofs in the non-ZK flavour,
+  verified on-chain by OpenZeppelin's verifier (on rs-soroban-ultrahonk); OpenZeppelin: "a proof is a
+  deterministic function of the witness and carries no such guarantee". Amounts sit in Pedersen
+  commitments; full amount privacy needs Soroban's zero-knowledge verifier.
 - **Zero-knowledge proof is checked in the browser, not on-chain.** Each order gets a zero-knowledge
   UltraHonk proof (`circuits/order`, Noir 1.0.0-beta.9, bb.js 0.87.0, ~1.2 s in a Web Worker) that it is on
   the price grid and funded; it is verified in the browser before the order is sent, and never posted. The
@@ -154,6 +173,36 @@ Federation): see [infra/README.md](infra/README.md).
   weeks), so depth added just before a demo does not count yet.
 - **Sybil / wash resistance** relies on locked, non-cancellable standing bids; bonded membership and
   nullifiers are not implemented.
+
+## Confidential deposits (default)
+
+`CONFIDENTIAL_DEPOSITS` (scripts, demo server, Terraform `confidential_deposits`) and
+`VITE_CONFIDENTIAL_DEPOSITS` (app, `vite --mode confidential`) are on by default. `false` runs the
+fixed-size escrow stack (`deployments/testnet.json`); `git checkout demo-stable` restores the build from
+before this feature.
+
+- **Tokens:** OpenZeppelin `stellar-confidential` 0.8.0 tokens wrapping the demo USDC and USTRY, with
+  OpenZeppelin's UltraHonk verifier and an auditor contract. Own deployment:
+  `deployments/testnet-confidential.json` (its own auction, oracle and pools).
+- **In the browser:** one SEP-53 message signature per token (Freighter `signMessage`) derives the
+  confidential keys (kept in memory); one-time `register` on both tokens; wrap and merge when short; then a
+  confidential transfer to the auction, proved in a Web Worker (~1.5–2.5 s on a laptop), inside
+  `place_order_confidential`.
+- **Settlement server:** holds the auction's spending key (`FATHOM_CONF_AUCTION_SK`: Secret Manager on the
+  VM, `.env.local` locally). After each close it merges the auction's received deposits and pays each
+  recorded amount with one proved transfer, one at a time; unpaid auctions are kept in its state and
+  resumed after a restart.
+- **Timing:** auctions run 8 minutes (+2 to reveal), because each payout needs a proof. Measured: ~1.5 s
+  per proof on a laptop; on the e2-micro 3.6 s while it has CPU credit, ~22 s once throttled.
+
+Testnet run with the flag on (browser, burner wallet): confidential seal
+[7229e7c6…](https://stellar.expert/explorer/testnet/tx/7229e7c61cde53f5ebb4dda9e455355d50d74ab0ff2310f8bed7d051fb412866),
+auto-reveal with the opening checked on-chain
+[1e33ddbd…](https://stellar.expert/explorer/testnet/tx/1e33ddbd2921a6df4a24f393faa7e3008824dada7015c0e92f8eaa2d795eebd8),
+close [0f66f863…](https://stellar.expert/explorer/testnet/tx/0f66f863db6ad001102688550d496705b99080d2806b72d718c4032523b32b30),
+a proved payout [3a4f03b3…](https://stellar.expert/explorer/testnet/tx/3a4f03b3ee086ac64aedef454c633fccfe156272f23b5c919f242965533768f9),
+attack replay [21b0b87d…](https://stellar.expert/explorer/testnet/tx/21b0b87d60e24dcda27767a6bf0e4e4d8c8e10810b090109241c5c1c74120444).
+More in [docs/testnet-run.md](docs/testnet-run.md).
 
 ## The real event (February 2026)
 
@@ -191,9 +240,14 @@ CLI keystore, never in the repo. All tunable parameters live in `scripts/config.
 | Reveal | `reveal(owner, order_id, side, price_tick, qty, salt)` | During the reveal window. Contract recomputes the Poseidon2 commitment and checks funding. |
 | Close | `close_auction()` | Anyone, after the reveal window. One uniform price maximizing matched volume; fills recorded; standing buys carried; unrevealed orders lose 1%. |
 | Settle | `settle(order_ids)` | Anyone. Pays out recorded fills and refunds, in batches. |
+| Seal (confidential) | `place_order_confidential(owner, commitment, side, standing, data)` | `data` is a confidential transfer owner → auction (proved in the browser); its commitment `c_transfer` is stored with the order. Any amount. |
+| Reveal (confidential) | `reveal_confidential(…, amount, blinding)` | Checks `amount·G + blinding·H == c_transfer` (Grumpkin, `stellar-contract-utils`), then the usual checks including funding. |
+| Unrevealed (confidential) | `open_deposit(order_id, amount, blinding)` | After the close: releases an unrevealed deposit minus 1%, given its opening. |
+| Pay (confidential) | `pay_confidential(order_id, base, amount, blinding, data)` | Settlement server's proved transfer auction → owner; its opening must equal the recorded amount. Always to the order's owner. |
 
-**What is hidden:** price and quantity, until the close. **What is visible:** side (from the deposit token)
-and deposit size (one of three fixed sizes). Confidential deposits would hide both; not in this MVP.
+**What is hidden:** price and quantity, until the close; by default also the deposit amount (until the
+reveal). **What is visible:** side (from the deposit token). With `CONFIDENTIAL_DEPOSITS=false`, the
+deposit size (one of three fixed sizes) is visible too.
 
 `commitment = Poseidon2(side, price_tick, qty, salt, owner_field)` over BN254, matching Noir's
 `Poseidon2::hash` (a test pins a vector computed with nargo 1.0.0-beta.9).
@@ -320,6 +374,9 @@ All prices are 7-decimal fixed point (`$1.06 = 10_600_000`), like Stellar token 
 | Noir (nargo) | 1.0.0-beta.9 | only version the UltraHonk verifier supports |
 | Barretenberg (bb) | 0.87.0 | same; Keccak oracle |
 | Node | 24 | |
+
+| OpenZeppelin confidential circuits | nargo 1.0.0-beta.11, bb 0.87.0 | via stellar-confidential-token-sdk `aad1706` (its own noir_js beta.11, in a separate Web Worker); our order circuit stays on beta.9 |
+| OpenZeppelin confidential contracts | stellar-confidential 0.8.0 | vendored wasm, [vendor/openzeppelin-confidential](vendor/openzeppelin-confidential/README.md) |
 
 Testnet runs protocol 29 (verifier needs ≥ 28).
 
