@@ -18,7 +18,8 @@
     "@stellar/stellar-sdk": "17.4.0",
     "react": "19.3.1",
     "react-dom": "19.3.1",
-    "react-router": "7.18.4"
+    "react-router": "7.18.4",
+    "stellar-confidential-token-sdk": "github:brozorec/stellar-confidential-token-sdk#aad17069714713bcb36fa376d0f2a87743e8e2a7"
   },
   "devDependencies": {
     "@types/react": "19.3.0",

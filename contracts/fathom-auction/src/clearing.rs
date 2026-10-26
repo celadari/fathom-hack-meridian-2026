@@ -38,7 +38,9 @@ pub fn clear(buys: &[Entry], sells: &[Entry], n_ticks: u32, anchor: u32) -> Opti
         }
         let better = match best {
             None => true,
-            Some((bt, bm)) => matched > bm || (matched == bm && t.abs_diff(anchor) < bt.abs_diff(anchor)),
+            Some((bt, bm)) => {
+                matched > bm || (matched == bm && t.abs_diff(anchor) < bt.abs_diff(anchor))
+            }
         };
         if better {
             best = Some((t, matched));
@@ -48,7 +50,12 @@ pub fn clear(buys: &[Entry], sells: &[Entry], n_ticks: u32, anchor: u32) -> Opti
     // Buyers: higher limit is better. Sellers: lower limit is better.
     let buy_fills = allocate(buys, matched, |e| e.tick >= tick, |e| u32::MAX - e.tick);
     let sell_fills = allocate(sells, matched, |e| e.tick <= tick, |e| e.tick);
-    Some(Clearing { tick, matched, buy_fills, sell_fills })
+    Some(Clearing {
+        tick,
+        matched,
+        buy_fills,
+        sell_fills,
+    })
 }
 
 /// Distribute `volume` over eligible entries level by level, best level first

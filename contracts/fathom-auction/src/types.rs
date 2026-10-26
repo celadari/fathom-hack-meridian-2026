@@ -24,6 +24,10 @@ pub enum Error {
     SaltOutOfField = 16,
     NotClosed = 17,
     CommitmentExists = 18,
+    NotConfidential = 19,
+    BadTransfer = 20,
+    BadOpening = 21,
+    PayoutMismatch = 22,
 }
 
 #[contracttype]

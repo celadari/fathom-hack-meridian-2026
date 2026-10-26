@@ -13,6 +13,8 @@ soroban-sdk = { workspace = true, features = ["alloc"] }
 # Poseidon2 over BN254 matching noir-lang/poseidon (same sponge, IV = len << 64).
 soroban-poseidon = "28.0.0"
 fathom-common = { path = "../../crates/fathom-common" }
+# Grumpkin point arithmetic for confidential deposits (same crate version as the token).
+stellar-contract-utils = "=0.8.0"
 
 [dev-dependencies]
 soroban-sdk = { workspace = true, features = ["testutils", "alloc"] }

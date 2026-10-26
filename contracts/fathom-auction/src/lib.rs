@@ -14,6 +14,7 @@ extern crate alloc;
 
 mod clearing;
 pub mod commitment;
+pub mod confidential;
 mod events;
 pub mod types;
 
@@ -57,7 +58,16 @@ impl FathomAuction {
             return Err(Error::BadConfig);
         }
         check_params(&params)?;
-        let cfg = Config { admin, base_token, quote_token, nav_feed, oracle: None, grid_min, grid_max, tick };
+        let cfg = Config {
+            admin,
+            base_token,
+            quote_token,
+            nav_feed,
+            oracle: None,
+            grid_min,
+            grid_max,
+            tick,
+        };
         let now = env.ledger().timestamp();
         let first = Auction {
             id: 1,
@@ -108,7 +118,11 @@ impl FathomAuction {
 
         let now = env.ledger().timestamp();
         let mut auction = roll(&env, now);
-        token::TokenClient::new(&env, &deposit_token).transfer(&owner, env.current_contract_address(), &deposit_amount);
+        token::TokenClient::new(&env, &deposit_token).transfer(
+            &owner,
+            env.current_contract_address(),
+            &deposit_amount,
+        );
 
         // The id is derived from the commitment, not a counter: concurrent orders from different
         // users then touch different keys, which their simulated footprints already contain.
@@ -131,19 +145,37 @@ impl FathomAuction {
             owed_base: 0,
             owed_quote: 0,
             placed_at: now,
-            expires_at: if standing { now + p.standing_secs } else { auction.reveal_end },
+            expires_at: if standing {
+                now + p.standing_secs
+            } else {
+                auction.reveal_end
+            },
         };
         put(&env, &DataKey::Order(id), &order);
         auction.orders.push_back(id);
         put(&env, &DataKey::Auction(auction.id), &auction);
         let key = DataKey::OwnerOrders(owner.clone());
-        let mut mine: Vec<u64> = env.storage().persistent().get(&key).unwrap_or(Vec::new(&env));
+        let mut mine: Vec<u64> = env
+            .storage()
+            .persistent()
+            .get(&key)
+            .unwrap_or(Vec::new(&env));
         mine.push_back(id);
         put(&env, &key, &mine);
-        env.storage().instance().extend_ttl(TTL_THRESHOLD, TTL_EXTEND);
+        env.storage()
+            .instance()
+            .extend_ttl(TTL_THRESHOLD, TTL_EXTEND);
 
-        OrderPlaced { auction: auction.id, order_id: id, owner, commitment, side, standing, deposit: deposit_amount }
-            .publish(&env);
+        OrderPlaced {
+            auction: auction.id,
+            order_id: id,
+            owner,
+            commitment,
+            side,
+            standing,
+            deposit: deposit_amount,
+        }
+        .publish(&env);
         Ok(id)
     }
 
@@ -158,41 +190,7 @@ impl FathomAuction {
         salt: BytesN<32>,
     ) -> Result<(), Error> {
         owner.require_auth();
-        let cfg = config(&env);
-        let mut o: Order = env.storage().persistent().get(&DataKey::Order(order_id)).ok_or(Error::OrderNotFound)?;
-        if o.owner != owner {
-            return Err(Error::NotOwner);
-        }
-        if o.status != OrderStatus::Sealed {
-            return Err(Error::AlreadyRevealed);
-        }
-        let a = auction(&env, o.auction);
-        let now = env.ledger().timestamp();
-        if now < a.commit_end || now >= a.reveal_end {
-            return Err(Error::NotRevealWindow);
-        }
-        if side != o.side {
-            return Err(Error::SideMismatch);
-        }
-        if price_tick >= n_ticks(&cfg) {
-            return Err(Error::PriceOffGrid);
-        }
-        if commitment::commitment(&env, side, price_tick, qty, &salt, &owner)? != o.commitment {
-            return Err(Error::CommitmentMismatch);
-        }
-        let needed = match side {
-            Side::Buy => mul_price_ceil(qty, price_of(&cfg, price_tick)),
-            Side::Sell => qty,
-        };
-        if needed > o.deposit {
-            return Err(Error::Underfunded);
-        }
-        o.price_tick = price_tick;
-        o.qty = qty;
-        o.status = OrderStatus::Live;
-        put(&env, &DataKey::Order(order_id), &o);
-        OrderRevealed { auction: o.auction, order_id, owner, side, price_tick, qty }.publish(&env);
-        Ok(())
+        reveal_inner(&env, owner, order_id, side, price_tick, qty, salt)
     }
 
     /// Close the oldest open auction once its reveal window is over. Anyone can call.
@@ -216,21 +214,31 @@ impl FathomAuction {
         // 1. Gather participants: this auction's revealed orders plus carried standing orders.
         //    Unrevealed orders are refunded minus the penalty; expired standing orders are refunded.
         let mut book: AVec<Order> = AVec::new();
-        let (mut fee_base, mut fee_quote): (i128, i128) = env.storage().instance().get(&DataKey::Fees).unwrap_or((0, 0));
+        let (mut fee_base, mut fee_quote): (i128, i128) = env
+            .storage()
+            .instance()
+            .get(&DataKey::Fees)
+            .unwrap_or((0, 0));
         for oid in a.orders.iter() {
             let mut o = order(&env, oid);
             match o.status {
                 OrderStatus::Live => book.push(o),
                 OrderStatus::Sealed => {
                     let penalty = o.deposit * p.penalty_bps as i128 / BPS;
-                    if o.side == Side::Buy { fee_quote += penalty } else { fee_base += penalty }
+                    if o.side == Side::Buy {
+                        fee_quote += penalty
+                    } else {
+                        fee_base += penalty
+                    }
                     o.deposit -= penalty;
                     release(&env, &mut o, &mut to_settle);
                 }
                 OrderStatus::Done => {}
             }
         }
-        env.storage().instance().set(&DataKey::Fees, &(fee_base, fee_quote));
+        env.storage()
+            .instance()
+            .set(&DataKey::Fees, &(fee_base, fee_quote));
         let carried: Vec<u64> = env.storage().persistent().get(&DataKey::Standing).unwrap();
         for oid in carried.iter() {
             let mut o = order(&env, oid);
@@ -254,8 +262,15 @@ impl FathomAuction {
         let mut buys = AVec::new();
         let mut sells = AVec::new();
         for o in book.iter() {
-            let e = Entry { tick: o.price_tick, qty: o.qty };
-            if o.side == Side::Buy { buys.push(e) } else { sells.push(e) }
+            let e = Entry {
+                tick: o.price_tick,
+                qty: o.qty,
+            };
+            if o.side == Side::Buy {
+                buys.push(e)
+            } else {
+                sells.push(e)
+            }
         }
         let result = clear(&buys, &sells, ticks, anchor);
         let (tick, matched, price) = match &result {
@@ -339,7 +354,11 @@ impl FathomAuction {
             st.set(&DataKey::LastClearTick, &tick);
         }
         st.extend_ttl(TTL_THRESHOLD, TTL_EXTEND);
-        AuctionClosed { auction: id, result: res.clone() }.publish(&env);
+        AuctionClosed {
+            auction: id,
+            result: res.clone(),
+        }
+        .publish(&env);
 
         // 5. Push to the oracle; its reads stay local.
         if let Some(oracle) = &cfg.oracle {
@@ -353,7 +372,8 @@ impl FathomAuction {
                 order_count,
                 depth,
             };
-            OracleClient::new(&env, oracle).record(&Asset::Stellar(cfg.base_token.clone()), &report);
+            OracleClient::new(&env, oracle)
+                .record(&Asset::Stellar(cfg.base_token.clone()), &report);
         }
         Ok(res)
     }
@@ -367,8 +387,13 @@ impl FathomAuction {
         let quote = token::TokenClient::new(&env, &cfg.quote_token);
         let mut paid = 0u32;
         for id in order_ids.iter() {
-            let mut o: Order = env.storage().persistent().get(&DataKey::Order(id)).ok_or(Error::OrderNotFound)?;
-            if o.owed_base == 0 && o.owed_quote == 0 {
+            let mut o: Order = env
+                .storage()
+                .persistent()
+                .get(&DataKey::Order(id))
+                .ok_or(Error::OrderNotFound)?;
+            // Confidential orders are paid by pay_confidential, with a proof.
+            if (o.owed_base == 0 && o.owed_quote == 0) || confidential::is_confidential(&env, id) {
                 continue;
             }
             if o.owed_base > 0 {
@@ -377,7 +402,13 @@ impl FathomAuction {
             if o.owed_quote > 0 {
                 quote.transfer(&this, &o.owner, &o.owed_quote);
             }
-            OrderSettled { order_id: id, owner: o.owner.clone(), base: o.owed_base, quote: o.owed_quote }.publish(&env);
+            OrderSettled {
+                order_id: id,
+                owner: o.owner.clone(),
+                base: o.owed_base,
+                quote: o.owed_quote,
+            }
+            .publish(&env);
             o.owed_base = 0;
             o.owed_quote = 0;
             put(&env, &DataKey::Order(id), &o);
@@ -390,7 +421,11 @@ impl FathomAuction {
     pub fn withdraw_fees(env: Env) -> (i128, i128) {
         let cfg = config(&env);
         cfg.admin.require_auth();
-        let (b, q): (i128, i128) = env.storage().instance().get(&DataKey::Fees).unwrap_or((0, 0));
+        let (b, q): (i128, i128) = env
+            .storage()
+            .instance()
+            .get(&DataKey::Fees)
+            .unwrap_or((0, 0));
         let this = env.current_contract_address();
         if b > 0 {
             token::TokenClient::new(&env, &cfg.base_token).transfer(&this, &cfg.admin, &b);
@@ -398,7 +433,9 @@ impl FathomAuction {
         if q > 0 {
             token::TokenClient::new(&env, &cfg.quote_token).transfer(&this, &cfg.admin, &q);
         }
-        env.storage().instance().set(&DataKey::Fees, &(0i128, 0i128));
+        env.storage()
+            .instance()
+            .set(&DataKey::Fees, &(0i128, 0i128));
         (b, q)
     }
 
@@ -421,7 +458,12 @@ impl FathomAuction {
             a.reveal_end = now;
         }
         put(&env, &DataKey::Auction(id), &a);
-        AuctionAdvanced { auction: id, commit_end: a.commit_end, reveal_end: a.reveal_end }.publish(&env);
+        AuctionAdvanced {
+            auction: id,
+            commit_end: a.commit_end,
+            reveal_end: a.reveal_end,
+        }
+        .publish(&env);
         Ok(a)
     }
 
@@ -463,7 +505,10 @@ impl FathomAuction {
 
     /// The oldest auction not closed yet (the one revealing or about to close).
     pub fn closing_auction(env: Env) -> Auction {
-        auction(&env, env.storage().instance().get(&DataKey::NextToClose).unwrap())
+        auction(
+            &env,
+            env.storage().instance().get(&DataKey::NextToClose).unwrap(),
+        )
     }
 
     pub fn auction(env: Env, id: u64) -> Option<Auction> {
@@ -473,7 +518,10 @@ impl FathomAuction {
     /// Number of still-sealed orders in the auction accepting commitments.
     pub fn sealed_count(env: Env) -> u32 {
         let a = Self::current_auction(env.clone());
-        a.orders.iter().filter(|id| order(&env, *id).status == OrderStatus::Sealed).count() as u32
+        a.orders
+            .iter()
+            .filter(|id| order(&env, *id).status == OrderStatus::Sealed)
+            .count() as u32
     }
 
     pub fn order(env: Env, id: u64) -> Option<Order> {
@@ -482,7 +530,12 @@ impl FathomAuction {
 
     /// Every order committed into an auction, in placement order (one read for the order list).
     pub fn orders_in(env: Env, auction: u64) -> Vec<Order> {
-        let ids = env.storage().persistent().get::<_, Auction>(&DataKey::Auction(auction)).map(|a| a.orders).unwrap_or(Vec::new(&env));
+        let ids = env
+            .storage()
+            .persistent()
+            .get::<_, Auction>(&DataKey::Auction(auction))
+            .map(|a| a.orders)
+            .unwrap_or(Vec::new(&env));
         let mut out = Vec::new(&env);
         for id in ids.iter() {
             out.push_back(order(&env, id));
@@ -491,7 +544,11 @@ impl FathomAuction {
     }
 
     pub fn orders_of(env: Env, owner: Address) -> Vec<Order> {
-        let ids: Vec<u64> = env.storage().persistent().get(&DataKey::OwnerOrders(owner)).unwrap_or(Vec::new(&env));
+        let ids: Vec<u64> = env
+            .storage()
+            .persistent()
+            .get(&DataKey::OwnerOrders(owner))
+            .unwrap_or(Vec::new(&env));
         let mut out = Vec::new(&env);
         for id in ids.iter() {
             out.push_back(order(&env, id));
@@ -511,11 +568,17 @@ impl FathomAuction {
 
     /// Revealed orders of a closed auction with their fills (the close screen's table).
     pub fn fills(env: Env, auction: u64) -> Vec<Fill> {
-        env.storage().persistent().get(&DataKey::Fills(auction)).unwrap_or(Vec::new(&env))
+        env.storage()
+            .persistent()
+            .get(&DataKey::Fills(auction))
+            .unwrap_or(Vec::new(&env))
     }
 
     pub fn fees(env: Env) -> (i128, i128) {
-        env.storage().instance().get(&DataKey::Fees).unwrap_or((0, 0))
+        env.storage()
+            .instance()
+            .get(&DataKey::Fees)
+            .unwrap_or((0, 0))
     }
 
     pub fn last_result(env: Env) -> Option<AuctionResult> {
@@ -529,7 +592,14 @@ impl FathomAuction {
     /// The commitment for an order opening. Read-only helper for scripts and for
     /// cross-checking the browser's Poseidon2 implementation; never send a real
     /// opening to a public RPC before the reveal window.
-    pub fn commitment_of(env: Env, owner: Address, side: Side, price_tick: u32, qty: i128, salt: BytesN<32>) -> Result<BytesN<32>, Error> {
+    pub fn commitment_of(
+        env: Env,
+        owner: Address,
+        side: Side,
+        price_tick: u32,
+        qty: i128,
+        salt: BytesN<32>,
+    ) -> Result<BytesN<32>, Error> {
         commitment::commitment(&env, side, price_tick, qty, &salt, &owner)
     }
 
@@ -565,16 +635,25 @@ fn current_id(env: &Env) -> u64 {
 }
 
 fn auction(env: &Env, id: u64) -> Auction {
-    env.storage().persistent().get(&DataKey::Auction(id)).unwrap()
+    env.storage()
+        .persistent()
+        .get(&DataKey::Auction(id))
+        .unwrap()
 }
 
 fn order(env: &Env, id: u64) -> Order {
     env.storage().persistent().get(&DataKey::Order(id)).unwrap()
 }
 
-fn put<V: soroban_sdk::IntoVal<Env, soroban_sdk::Val>>(env: &Env, key: &DataKey, value: &V) {
+fn put<K, V>(env: &Env, key: &K, value: &V)
+where
+    K: soroban_sdk::IntoVal<Env, soroban_sdk::Val>,
+    V: soroban_sdk::IntoVal<Env, soroban_sdk::Val>,
+{
     env.storage().persistent().set(key, value);
-    env.storage().persistent().extend_ttl(key, TTL_THRESHOLD, TTL_EXTEND);
+    env.storage()
+        .persistent()
+        .extend_ttl(key, TTL_THRESHOLD, TTL_EXTEND);
 }
 
 /// The auction after `cur`, skipping whole idle periods so its window contains `now`.
@@ -582,7 +661,14 @@ fn next_after(env: &Env, cur: &Auction, now: u64) -> Auction {
     let p = params(env);
     let periods = (now - cur.commit_end) / p.period_secs + 1;
     let commit_end = cur.commit_end + periods * p.period_secs;
-    Auction { id: cur.id + 1, commit_end, reveal_end: commit_end + p.reveal_secs, orders: Vec::new(env), closed: false, to_settle: Vec::new(env) }
+    Auction {
+        id: cur.id + 1,
+        commit_end,
+        reveal_end: commit_end + p.reveal_secs,
+        orders: Vec::new(env),
+        closed: false,
+        to_settle: Vec::new(env),
+    }
 }
 
 /// Return the auction accepting commitments, creating the next one if the current window ended.
@@ -598,6 +684,66 @@ fn roll(env: &Env, now: u64) -> Auction {
 }
 
 /// Take an order out of the book: its remaining escrow becomes owed back to the owner.
+/// The checks every reveal runs, against the order's (possibly just disclosed) deposit.
+fn reveal_inner(
+    env: &Env,
+    owner: Address,
+    order_id: u64,
+    side: Side,
+    price_tick: u32,
+    qty: i128,
+    salt: BytesN<32>,
+) -> Result<(), Error> {
+    let env = env.clone();
+    let cfg = config(&env);
+    let mut o: Order = env
+        .storage()
+        .persistent()
+        .get(&DataKey::Order(order_id))
+        .ok_or(Error::OrderNotFound)?;
+    if o.owner != owner {
+        return Err(Error::NotOwner);
+    }
+    if o.status != OrderStatus::Sealed {
+        return Err(Error::AlreadyRevealed);
+    }
+    let a = auction(&env, o.auction);
+    let now = env.ledger().timestamp();
+    if now < a.commit_end || now >= a.reveal_end {
+        return Err(Error::NotRevealWindow);
+    }
+    if side != o.side {
+        return Err(Error::SideMismatch);
+    }
+    if price_tick >= n_ticks(&cfg) {
+        return Err(Error::PriceOffGrid);
+    }
+    if commitment::commitment(&env, side, price_tick, qty, &salt, &owner)? != o.commitment {
+        return Err(Error::CommitmentMismatch);
+    }
+    let needed = match side {
+        Side::Buy => mul_price_ceil(qty, price_of(&cfg, price_tick)),
+        Side::Sell => qty,
+    };
+    if needed > o.deposit {
+        return Err(Error::Underfunded);
+    }
+    o.price_tick = price_tick;
+    o.qty = qty;
+    o.status = OrderStatus::Live;
+    put(&env, &DataKey::Order(order_id), &o);
+    OrderRevealed {
+        auction: o.auction,
+        order_id,
+        owner,
+        side,
+        price_tick,
+        qty,
+    }
+    .publish(&env);
+    Ok(())
+}
+
 fn release(env: &Env, o: &mut Order, to_settle: &mut Vec<u64>) {
     match o.side {
         Side::Buy => o.owed_quote += o.deposit,

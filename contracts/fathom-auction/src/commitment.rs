@@ -15,7 +15,10 @@ pub fn owner_field(env: &Env, owner: &Address) -> U256 {
     let mut buf = [0u8; 56];
     let len = strkey.len() as usize;
     strkey.copy_into_slice(&mut buf[..len]);
-    let mut digest = env.crypto().sha256(&Bytes::from_slice(env, &buf[..len])).to_array();
+    let mut digest = env
+        .crypto()
+        .sha256(&Bytes::from_slice(env, &buf[..len]))
+        .to_array();
     digest[0] = 0;
     U256::from_be_bytes(env, &Bytes::from_array(env, &digest))
 }
