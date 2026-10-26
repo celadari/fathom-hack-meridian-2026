@@ -57,7 +57,8 @@ function AuctionRoom({ a }: { a: AuctionView }) {
   const [priceEdited, setPriceEdited] = useState({ buy: false, sell: false });
   const [qtyEdited, setQtyEdited] = useState(false);
   const [standing, setStanding] = useState(true);
-  const [progress, setProgress] = useState<null | { text: string; lock: string; p: SealProgress }>(null);
+  // `stages`: confidential-deposit steps seen so far (setup, wrap, proof, …), kept as a list.
+  const [progress, setProgress] = useState<null | { text: string; lock: string; p: SealProgress; stages: string[] }>(null);
 
   const buy = side === "buy";
   const qty = Number(qtyText.replace(/,/g, "")) || 0;
@@ -88,7 +89,7 @@ function AuctionRoom({ a }: { a: AuctionView }) {
     if (source === "mock") {
       if (progress) return setProgress(null);
       const text = `${buy ? "Buy" : "Sell"} ${fmtInt(qty)}`;
-      return setProgress({ text, lock: `${fmtInt(deposit ?? 0)} ${lockTok} locked${isStanding ? ` for ${a.standingDays} days` : ""} · price and quantity hidden`, p: { step: "locked", fingerprint: "0x1f9a…c3e2", link: "#", orderId: "mock", proofMs: 1800 } });
+      return setProgress({ text, lock: `${fmtInt(deposit ?? 0)} ${lockTok} locked${isStanding ? ` for ${a.standingDays} days` : ""} · price and quantity hidden`, p: { step: "locked", fingerprint: "0x1f9a…c3e2", link: "#", orderId: "mock", proofMs: 1800 }, stages: [] });
     }
     if (!wallet.address) return void wallet.connect(DEMO && wallet.freighterInstalled === false ? "burner" : "freighter");
     if (progress && !busy) return setProgress(null);
@@ -97,13 +98,17 @@ function AuctionRoom({ a }: { a: AuctionView }) {
     const lock = CONFIDENTIAL
       ? `Confidential ${lockTok} deposit locked${isStanding ? ` for ${a.standingDays} days` : ""} · price and quantity hidden`
       : `${fmtInt(deposit)} ${lockTok} locked${isStanding ? ` for ${a.standingDays} days` : ""} · price and quantity hidden`;
-    setProgress({ text, lock, p: { step: "sealing" } });
+    setProgress({ text, lock, p: { step: "sealing" }, stages: [] });
     void seal(
       {
         side: buy ? 0 : 1, priceTick: tick, qty: BigInt(Math.round(qty)) * UNIT, deposit: BigInt(deposit) * UNIT, standing: isStanding,
         grid: { min: BigInt(Math.round(a.grid.min * 1e7)), tick: BigInt(Math.round(a.grid.tick * 1e7)), ticks: a.grid.ticks },
       },
-      (p) => setProgress({ text, lock, p }),
+      (p) => setProgress((prev) => {
+        const stages = prev?.stages ?? [];
+        const add = p.step === "proved" && p.detail && stages[stages.length - 1] !== p.detail;
+        return { text, lock, p, stages: add ? [...stages, p.detail!] : stages };
+      }),
     );
   };
 
@@ -201,10 +206,23 @@ function AuctionRoom({ a }: { a: AuctionView }) {
                     : fingerprint && p?.step !== "error" ? "Proving in your browser that the order is valid and paid for…" : "Not proven"}
                 </span>
               </li>
+              {progress.stages.map((st, i) => {
+                // Each confidential step stays listed: done ones get a check, the current one pulses.
+                const current = i === progress.stages.length - 1 && !locked;
+                const failed = current && p?.step === "error";
+                return (
+                  <li key={st} className="fade" style={{ display: "flex", gap: "8px", alignItems: "baseline" }}>
+                    {current && !failed
+                      ? <span className="live" aria-hidden="true" style={{ flex: "none", marginTop: "4px" }} />
+                      : <span className={failed ? undefined : "pop"} style={{ color: failed ? "#D93A3A" : "#40B66B" }}>{failed ? "✕" : "✓"}</span>}
+                    <span style={{ color: current ? "#131313" : "#7D7D7D" }}>{current && !failed ? st : st.replace(/…$/, "")}</span>
+                  </li>
+                );
+              })}
               <li className="fade" style={{ display: "flex", gap: "8px" }}>
-                <span style={{ color: locked ? "#40B66B" : "#B5B5B5" }}>{locked ? "✓" : "…"}</span>
+                <span className={locked ? "pop" : undefined} style={{ color: locked ? "#40B66B" : "#B5B5B5" }}>{locked ? "✓" : "…"}</span>
                 <span>
-                  {locked ? progress.lock : p?.step === "proved" && p.detail ? p.detail : proofMs !== null && p?.step !== "error" ? "Locking funds on Stellar…" : "Funds not locked yet"}
+                  {locked ? progress.lock : proofMs !== null && p?.step !== "error" && !progress.stages.length ? "Locking funds on Stellar…" : "Funds not locked yet"}
                   {p?.step === "locked" && <> · <a href={p.link} target="_blank" rel="noreferrer" style={{ color: "#FC72FF" }}>stellar.expert</a></>}
                 </span>
               </li>
