@@ -79,6 +79,10 @@ svg * { transform-box: fill-box; }
 @keyframes blobDrift { from { transform: translate(0, 0) scale(1) } to { transform: translate(120px, 60px) scale(1.15) } }
 @keyframes sonarWide { 0% { transform: scale(1); opacity: .9 } 100% { transform: scale(9); opacity: 0 } }
 @keyframes rise { 0% { transform: translateY(0); opacity: 0 } 8% { opacity: 1 } 85% { opacity: 1 } 100% { transform: translateY(-110vh); opacity: 0 } }
+@keyframes gavelStrike { 0%, 60% { transform: rotate(24deg) } 66% { transform: rotate(30deg) } 74% { transform: rotate(0) } 79% { transform: rotate(7deg) } 84%, 88% { transform: rotate(0) } 100% { transform: rotate(24deg) } }
+@keyframes gavelRing { 0%, 73% { transform: scale(.4); opacity: 0 } 75% { opacity: 1 } 100% { transform: scale(2.2); opacity: 0 } }
+@keyframes clearedTag { 0%, 74% { transform: scale(0) translateY(10px); opacity: 0 } 80% { transform: scale(1.1); opacity: 1 } 84%, 94% { transform: scale(1); opacity: 1 } 100% { transform: translateY(-8px); opacity: 0 } }
+@media (max-width: 900px) { .backdrop-gavel { display: none } }
 @keyframes sway { from { transform: translateX(calc(var(--sway) * -1)) rotate(-6deg) } to { transform: translateX(var(--sway)) rotate(6deg) } }
 
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important } }
