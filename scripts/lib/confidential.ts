@@ -88,6 +88,23 @@ export function auctionKeys(token: string): KeyPair {
   return deriveKeys(BigInt(hex.startsWith("0x") ? hex : `0x${hex}`), addressToField(token));
 }
 
+/**
+ * spendableForProof() checks the state already synced, so callers sync first. Right after a
+ * transaction the RPC can still serve a balance ahead of its events ("local openings differ"):
+ * wait a ledger and rebuild.
+ */
+async function withFreshState<T>(key: string, f: () => Promise<T>): Promise<T> {
+  for (let i = 1; ; i++) {
+    try {
+      return await f();
+    } catch (e) {
+      if (i >= 6 || !/openings differ|not synced|behind/i.test(String((e as Error)?.message ?? e))) throw e;
+      engines.delete(key);
+      await new Promise((r) => setTimeout(r, 3000 * i));
+    }
+  }
+}
+
 const engines = new Map<string, StateEngine>();
 function engine(address: string, token: string, keys: KeyPair): StateEngine {
   const key = `${address}:${token}`;
@@ -155,7 +172,7 @@ export interface Opening {
 /** Prove a confidential transfer kp → auction of `amount`; returns the XDR TransferData and its opening. */
 export async function depositTransfer(kp: Keypair, token: string, auction: string, amount: bigint): Promise<{ data: Buffer; opening: Opening; ms: number }> {
   const keys = accountKeys(kp, token);
-  const { v, r } = await engine(kp.publicKey(), token, keys).spendableForProof();
+  const { v, r } = await withFreshState(`${kp.publicKey()}:${token}`, async () => { const e = engine(kp.publicKey(), token, keys); await e.sync(); return e.spendableForProof(); });
   const kAud = await auditorKey(token);
   const w = buildTransferWitness({ keys, v, r, amount, pvkB: await pvkOf(token, auction), kAudR: kAud, kAudS: kAud });
   const { proof, ms } = await prove("transfer", w.inputs);
@@ -165,7 +182,7 @@ export async function depositTransfer(kp: Keypair, token: string, auction: strin
 /** Prove a payout auction → owner of `amount` on `token`; the auction checks the opening before sending. */
 export async function payoutTransfer(token: string, auction: string, owner: string, amount: bigint): Promise<{ data: Buffer; opening: Opening; ms: number }> {
   const keys = auctionKeys(token);
-  const { v, r } = await engine(auction, token, keys).spendableForProof();
+  const { v, r } = await withFreshState(`${auction}:${token}`, async () => { const e = engine(auction, token, keys); await e.sync(); return e.spendableForProof(); });
   const kAud = await auditorKey(token);
   const w = buildTransferWitness({ keys, v, r, amount, pvkB: await pvkOf(token, owner), kAudR: kAud, kAudS: kAud });
   const { proof, ms } = await prove("transfer", w.inputs);

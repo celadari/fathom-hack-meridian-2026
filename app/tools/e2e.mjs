@@ -71,7 +71,8 @@ try {
   await page.locator("#limit").fill("1.040");
   await ready();
   await page.getByRole("button", { name: "Lock & seal order" }).click();
-  await page.waitForFunction(() => /USDC locked/.test(document.body.innerText) || /Not placed|failed/.test(document.body.innerText), null, { timeout: 120_000 });
+  // Confidential deposits (VITE_CONFIDENTIAL_DEPOSITS) include one-time setup: register, wrap, merge.
+  await page.waitForFunction(() => /USDC (deposit )?locked/.test(document.body.innerText) || /Not placed|failed/.test(document.body.innerText), null, { timeout: 300_000 });
   const proofLine = await page.locator("li", { hasText: "Zero-knowledge proof" }).first().innerText().catch(() => "");
   log(`proof: ${proofLine.replace(/\s+/g, " ").slice(0, 120)}`);
   await page.waitForTimeout(3000); // let the placed event slide the row in

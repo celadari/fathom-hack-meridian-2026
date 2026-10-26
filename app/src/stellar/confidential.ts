@@ -138,7 +138,9 @@ let auditorKey: Point | undefined;
 export async function depositTransfer(s: Signer, side: "buy" | "sell", amount: bigint): Promise<{ data: Uint8Array; amount: bigint; blinding: bigint; ms: number }> {
   const token = confToken(side);
   const keys = await keysFor(s, token);
-  const { v, r } = await engine(s.address, token, keys).spendableForProof();
+  const e = engine(s.address, token, keys);
+  await e.sync(); // spendableForProof() checks the synced state; it does not sync
+  const { v, r } = await e.spendableForProof();
   if (v < amount) throw new Error(`Confidential balance ${v} is below the deposit ${amount}; wrap more first.`);
   auditorKey ??= await client(token).auditorKey(AUDITOR_ID);
   const auction = await client(token).confidentialBalance(IDS.auction);

@@ -289,7 +289,8 @@ export async function settleConfidential(log: (s: string) => void = () => {}): P
   const c = await auction(operator());
   const steps: Step[] = [];
   const openings = load<Openings>(OPENINGS, {});
-  const { hash: mh } = await write(c, "merge_confidential");
+  // Sent even when simulation sees nothing to merge (it then reads as a read-only call).
+  const { hash: mh } = await write(c, "merge_confidential", {}, { force: true });
   steps.push(step("auction merged its received deposits", mh));
   type Ord = { id: bigint; owner: string; status: number; owed_base: bigint; owed_quote: bigint };
   for (const auctionId of [...pending]) {

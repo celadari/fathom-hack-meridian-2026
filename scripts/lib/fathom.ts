@@ -42,12 +42,12 @@ export async function read<T>(c: Dyn, method: string, args?: object): Promise<T>
  * auction first. A FAILED transaction applied nothing, so it is safe to wait a
  * moment, re-simulate and send again.
  */
-export async function write<T>(c: Dyn, method: string, args?: object, opts: { attempts?: number; writeSlack?: number } = {}): Promise<{ value: T; hash: string }> {
-  const { attempts = 4, writeSlack = 0 } = opts;
+export async function write<T>(c: Dyn, method: string, args?: object, opts: { attempts?: number; writeSlack?: number; force?: boolean } = {}): Promise<{ value: T; hash: string }> {
+  const { attempts = 4, writeSlack = 0, force = false } = opts;
   for (let i = 1; ; i++) {
     const tx = await c[method](args);
     if (writeSlack) addWriteSlack(tx, writeSlack);
-    const sent = await tx.signAndSend();
+    const sent = await tx.signAndSend({ force });
     const hash: string = sent.sendTransactionResponse?.hash ?? "";
     const status = sent.getTransactionResponse?.status;
     if (status === "SUCCESS") return { value: unwrap(sent.result), hash };
