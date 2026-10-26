@@ -2,6 +2,7 @@
 // so the same component draws any auction, not just the worked example.
 import { Link } from "react-router";
 import { Header, Page } from "../components/Header";
+import { PageIntro } from "../components/PageIntro";
 import { NAV_TITLE, SetByUs } from "../components/SetByUs";
 import { Slice } from "../components/State";
 import type { CloseView as CloseViewData, FillRow } from "../data/types";
@@ -59,6 +60,7 @@ export function Close() {
   return (
     <Page minHeight={980}>
       <Header />
+      <PageIntro width={1360} pad={32} title="Results" what="The last auction, opened: every revealed order and the one price they all filled at." why="Shows the clearing is fair and checkable on Stellar, and the price and depth it published to the oracle." />
       <Slice of={close} label="the last close" minHeight={400}>{(c) => <CloseView key={c.auction} c={c} />}</Slice>
     </Page>
   );
@@ -85,9 +87,9 @@ function CloseView({ c }: { c: CloseViewData }) {
         <section style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "flex-end", gap: "24px" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
             <span style={{ fontSize: "13px", color: "#7D7D7D", letterSpacing: "0.08em", textTransform: "uppercase" }}>Auction #{c.auction} · {base} / {quote} · closed {fmtUtc(c.closedAt)}</span>
-            <h1 style={{ margin: 0, fontSize: "34px", fontWeight: 600 }}>{c.cleared ? <>Orders revealed. Everyone trades at <span style={{ color: "#FC72FF" }}>{price}</span></> : "Orders revealed. Buyers and sellers did not cross"}</h1>
+            <h2 style={{ margin: 0, fontSize: "28px", fontWeight: 600 }}>{c.cleared ? <>Orders revealed. Everyone trades at <span style={{ color: "#FC72FF" }}>{price}</span></> : "Orders revealed. Buyers and sellers did not cross"}</h2>
           </div>
-          <Link to="/liquidity" style={{ background: "#FC72FF", color: "#FFFFFF", textDecoration: "none", borderRadius: "10px", padding: "14px 18px", fontWeight: 600, minHeight: "48px", boxSizing: "border-box", display: "inline-flex", alignItems: "center" }}>See published liquidity</Link>
+          <Link to="/liquidity" style={{ background: "#FC72FF", color: "#FFFFFF", textDecoration: "none", borderRadius: "10px", padding: "14px 18px", fontWeight: 600, minHeight: "48px", boxSizing: "border-box", display: "inline-flex", alignItems: "center" }}>See price & depth</Link>
         </section>
 
         <div style={{ display: "flex", flexWrap: "wrap", gap: "24px", alignItems: "stretch" }}>

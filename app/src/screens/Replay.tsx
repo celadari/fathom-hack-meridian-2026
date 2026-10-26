@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { useSearchParams } from "react-router";
 import { Header, Page } from "../components/Header";
+import { PageIntro } from "../components/PageIntro";
 import { Slice, TxLine, type TxState } from "../components/State";
 import { DEMO, SET_BY_US } from "../config";
 import { DEX_TITLE, SetByUs } from "../components/SetByUs";
@@ -33,6 +34,7 @@ export function Replay() {
   return (
     <Page minHeight={980}>
       <Header />
+      <PageIntro width={1360} pad={32} title="Attack demo" what="A real-world style attack, replayed on testnet: one trade pumps a thin DEX and drains a lending pool." why="Pool A trusts the DEX price and is drained; Pool B uses Fathom’s price and depth cap and rejects the same loan." />
       <Slice of={replay} label="the replay" minHeight={400}>{(r) => <ReplayRoom r={r} />}</Slice>
     </Page>
   );
@@ -150,7 +152,7 @@ function ReplayRoom({ r }: { r: ReplayView }) {
       <section style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "flex-end", gap: "24px" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: "6px", maxWidth: "760px" }}>
           <span title={REAL_EVENT_NOTE} style={{ fontSize: "13px", color: "#7D7D7D", letterSpacing: "0.08em", textTransform: "uppercase" }}>February 2026 · YieldBlox pattern<sup><a href="#sources" style={{ color: "#7D7D7D", textDecoration: "none" }}> 1</a></sup></span>
-          <h1 style={{ margin: 0, fontSize: "34px", fontWeight: 600 }}>One trade pumped {base} {factor}×. Two pools, two oracles.</h1>
+          <h2 style={{ margin: 0, fontSize: "28px", fontWeight: 600 }}>One trade pumped {base} {factor}×. Two pools, two oracles.</h2>
           <span style={{ fontSize: "12px", color: live ? "#40B66B" : "#B7791F" }}>
             {live ? "Live on testnet: every step is a real transaction; numbers are contract reads." : "Simulated replay: DEX and Pool A numbers are the scenario. Fathom and Pool B numbers are live reads. Open with ?demo to run it on testnet."}
           </span>

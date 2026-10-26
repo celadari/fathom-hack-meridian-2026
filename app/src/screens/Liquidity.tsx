@@ -3,6 +3,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import { NAV_TITLE, SetByUs } from "../components/SetByUs";
 import { Header, Page } from "../components/Header";
+import { PageIntro } from "../components/PageIntro";
 import { Slice } from "../components/State";
 import type { LiquidityStatus, LiquidityView as LiquidityData } from "../data/types";
 import { useFathom } from "../data/useFathom";
@@ -30,6 +31,7 @@ export function Liquidity() {
   return (
     <Page minHeight={1080}>
       <Header />
+      <PageIntro width={1360} pad={32} title="Price & depth" what="What Fathom publishes for lenders: a robust USTRY price and how much can really be sold near NAV." why="Lenders cap how much USTRY they accept by this depth, so a thin market cannot be used to borrow too much." />
       <Slice of={liquidity} label="published liquidity" minHeight={400}>{(l) => <LiquidityView key={l.history.at(-1)?.auction ?? 0} l={l} />}</Slice>
     </Page>
   );
@@ -52,7 +54,6 @@ function LiquidityView({ l }: { l: LiquidityData }) {
       <main style={{ maxWidth: "1360px", margin: "0 auto", padding: "32px", display: "flex", flexDirection: "column", gap: "24px" }}>
         <section style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
           <span style={{ fontSize: "13px", color: "#7D7D7D", letterSpacing: "0.08em", textTransform: "uppercase", display: "flex", alignItems: "center", gap: "8px" }}><span className="live" aria-hidden="true" />Published on-chain · SEP-40 feed · live</span>
-          <h1 style={{ margin: 0, fontSize: "34px", fontWeight: 600 }}>How much can really be sold, and at what price</h1>
         </section>
 
         <div style={{ display: "flex", flexWrap: "wrap", gap: "24px", alignItems: "stretch" }}>

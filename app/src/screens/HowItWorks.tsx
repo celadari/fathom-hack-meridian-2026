@@ -20,8 +20,9 @@ export function HowItWorks() {
       <Header />
       <main style={{ maxWidth: '1280px', margin: '0 auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
       <section style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-      <span style={{ color: '#7D7D7D', fontSize: '14px' }}>Behind the screen · <span style={{ color: '#B7791F' }}>illustrations use example numbers (simulated)</span></span>
-      <h1 style={{ margin: '0', fontSize: '36px', fontWeight: '485' }}>What happens to your order</h1>
+      <h1 style={{ margin: '0', fontSize: '28px', fontWeight: '600' }}>How it works</h1>
+      <p style={{ margin: '0', fontSize: '16px' }}>What happens to your order, step by step: sealed, revealed, cleared at one price, published for lenders.</p>
+      <p style={{ margin: '0', color: '#B7791F', fontSize: '14px' }}>Illustrations use example numbers (simulated); the other pages show live testnet data.</p>
       </section>
       
       <div className="fx-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '20px' }}>
