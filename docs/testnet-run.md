@@ -32,3 +32,21 @@ seed bots, seal an order, Next auction (auto-reveal, close, settle), results, da
 Verifier demo (dummy order, browser-generated non-ZK proof, verified by rs-soroban-ultrahonk on testnet):
 [f13a8853…](https://stellar.expert/explorer/testnet/tx/f13a88532ec27f35820c29ff52c92bb84d720bb4e7e4387d27250c569701d87a).
 CLI-generated proof verified on-chain: [4d3ddd8c…](https://stellar.expert/explorer/testnet/tx/4d3ddd8ce1b46b6f9232302d2bcd517e1a9b9fda917ad4c8820c6612b274c13d).
+
+## Hosted stack, 2026-10-26 (GCE e2-micro + Cloudflare)
+
+App: https://fathom-b3t.pages.dev · API: https://fathom-demo-api.hackathons-18c.workers.dev (Worker → Workers VPC → tunnel → VM).
+Five consecutive auctions closed by the hosted server's loop alone, 8 bot orders each, no failed transaction in the server log.
+Each close transaction also carries the oracle's `recorded` event (the push); Pool B's cap read $12,400 throughout
+(50% of the lowest oracle depth in its window, $24,800).
+
+| Auction | Closed (UTC) | Clearing | Matched (USTRY) | Close + oracle push | Settle |
+|---|---|---|---|---|---|
+| #85 | 02:32:07 | $1.04 | 15,000 | [7d86729c94…](https://stellar.expert/explorer/testnet/tx/7d86729c9409e5ddff5a8db3e1239ddcda2075a5d6e732f487bd164c82fe4b27) | [064cbc8514…](https://stellar.expert/explorer/testnet/tx/064cbc8514f5e41a7c311f4fcfac4cf253b86e5f4bd9797f5be879c6262790e7) |
+| #86 | 02:35:07 | $1.04 | 23,000 | [3d7262941a…](https://stellar.expert/explorer/testnet/tx/3d7262941acc157c3eb84d73573f6282833cf3838973ab2b5853e4d87a69c45e) | [4b32be54ab…](https://stellar.expert/explorer/testnet/tx/4b32be54abddcaacc1d68c4661eb209b22df544ad3a2b404c6c3a5d531b114e6) |
+| #87 | 02:38:12 | $1.04 | 24,000 | [9fa2dc9b00…](https://stellar.expert/explorer/testnet/tx/9fa2dc9b00366e0b69bcc753c7c4c2c4890a186250a236a6fa8c6758402ec658) | [6b0f669c57…](https://stellar.expert/explorer/testnet/tx/6b0f669c57954622827724c51b5136bd119d068421262117edf1ff604a894e6e) |
+| #88 | 02:41:07 | $1.04 | 18,000 | [eb642163e7…](https://stellar.expert/explorer/testnet/tx/eb642163e77688f7c4864ca13d014d17ee8465226b346955b9ce3bab519a493b) | [2311f72bfd…](https://stellar.expert/explorer/testnet/tx/2311f72bfd39cf88dea060998c2b6b24253b7e284c81f918428773bc06161a48) |
+| #89 | 02:44:07 | $1.05 | 20,000 | [17b209047c…](https://stellar.expert/explorer/testnet/tx/17b209047c2f47c6644eeb640ac1da8e3bd09c7196a0634ed77fc3a7a2f96535) | [738a817866…](https://stellar.expert/explorer/testnet/tx/738a8178660f59256a8d0be44e23515f1beecbc9d8ac7c11aab6554391f6e913) |
+
+Earlier the same morning (#64–#84) a local Docker Compose server was still looping on the same testnet keys;
+the two loops collided (RPC `TRY_AGAIN_LATER`), so those auctions are not counted here.
