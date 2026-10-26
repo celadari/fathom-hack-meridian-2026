@@ -48,7 +48,7 @@ variable "workers_dev_subdomain" {
 }
 
 variable "confidential_deposits" {
-  description = "CONFIDENTIAL_DEPOSITS: the demo server runs the confidential-token stack (deployments/testnet-confidential.json, 8-minute auctions). Off: the fixed-size escrow stack."
+  description = "CONFIDENTIAL_DEPOSITS: the demo server runs the confidential-token stack (deployments/testnet-confidential.json, 8-minute auctions). false: the fixed-size escrow stack (rollback)."
   type        = bool
-  default     = false
+  default     = true
 }

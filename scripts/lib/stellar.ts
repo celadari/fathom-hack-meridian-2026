@@ -20,7 +20,7 @@ export const FRIENDBOT_URL = process.env.FATHOM_FRIENDBOT_URL ?? (LOCAL ? "http:
 export const ALLOW_HTTP = RPC_URL.startsWith("http://") || HORIZON_URL.startsWith("http://");
 
 /** deployments/<name>.json: the network name, or FATHOM_DEPLOYMENT (e.g. testnet-confidential). */
-export const DEPLOYMENT_NAME = process.env.FATHOM_DEPLOYMENT ?? (process.env.CONFIDENTIAL_DEPOSITS === "true" ? `${NETWORK}-confidential` : NETWORK);
+export const DEPLOYMENT_NAME = process.env.FATHOM_DEPLOYMENT ?? (process.env.CONFIDENTIAL_DEPOSITS !== "false" ? `${NETWORK}-confidential` : NETWORK);
 const DEPLOYMENTS = resolve(ROOT, `deployments/${DEPLOYMENT_NAME}.json`);
 
 export type Deployment = Record<string, string>;

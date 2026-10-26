@@ -7,12 +7,12 @@
 export const UNIT = 10_000_000n;
 
 /**
- * CONFIDENTIAL_DEPOSITS=true: deposits go through OpenZeppelin confidential tokens (any amount,
- * hidden in Pedersen commitments) instead of fixed-size escrow. Off by default. The settlement
+ * CONFIDENTIAL_DEPOSITS (default on): deposits go through OpenZeppelin confidential tokens (any
+ * amount, hidden in Pedersen commitments). CONFIDENTIAL_DEPOSITS=false: fixed-size escrow. The settlement
  * server proves every payout (~20 s per proof on the e2-micro, one transaction per ledger), so
  * auctions run 8 minutes instead of 3. Uses its own deployment (deployments/testnet-confidential.json).
  */
-export const CONFIDENTIAL = process.env.CONFIDENTIAL_DEPOSITS === "true";
+export const CONFIDENTIAL = process.env.CONFIDENTIAL_DEPOSITS !== "false";
 const usd = (n: number) => BigInt(Math.round(n * 100)) * (UNIT / 100n);
 
 export const CONFIG = {
