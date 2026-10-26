@@ -11,6 +11,8 @@ export default defineConfig({
   server: {
     port: 5173,
     // The demo server (scripts/demo-server.ts) holds the testnet demo keys.
-    proxy: { "/demo": process.env.DEMO_PROXY_TARGET ?? "http://127.0.0.1:8787" },
+    // DEMO_PROXY_TARGET=https://fathom-demo-api.<subdomain>.workers.dev uses the hosted demo server
+    // (its faucet is public; ?demo actions need the token), so no local server competes for its keys.
+    proxy: { "/demo": { target: process.env.DEMO_PROXY_TARGET ?? "http://127.0.0.1:8787", changeOrigin: true } },
   },
 });
