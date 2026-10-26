@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { CONFIDENTIAL, IDS, expertTx } from "../config";
 import * as conf from "./confidential";
+import { accountStatus } from "./funding";
 import { ledgerNow, onEvents } from "./events";
 import { AUCTION_ERRORS, contractErrorCode, read, send } from "./client";
 import { commitment, hexBytes, newSalt, ownerField, saltBytes } from "./commitment";
@@ -51,8 +52,10 @@ interface RawAuction { commit_end: bigint; reveal_end: bigint }
 const hex = (b: Uint8Array) => Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
 const message = (e: unknown) => {
   const code = contractErrorCode(e);
-  if (code && AUCTION_ERRORS[code]) return AUCTION_ERRORS[code];
   const m = e instanceof Error ? e.message : String(e);
+  // Wrapping into a confidential token moves public tokens: the token contract's #10 is "balance too low".
+  if (code === 10 && /deposit/i.test(m)) return "Not enough public tokens to wrap into the confidential token. Use \"Get demo tokens\" or lower the quantity.";
+  if (code && AUCTION_ERRORS[code]) return AUCTION_ERRORS[code];
   return m.length > 220 ? `${m.slice(0, 220)}…` : m;
 };
 
@@ -184,6 +187,16 @@ export function MyOrdersProvider({ children }: { children: ReactNode }) {
         const bal = await conf.spendable(signer, side);
         if (bal.spendable < r.deposit) {
           const wrap = r.deposit - bal.spendable - bal.receiving;
+          if (wrap > 0n) {
+            // Wrapping moves public tokens: check there are enough before asking for a signature.
+            const tok = side === "buy" ? "USDC" : "USTRY";
+            const pub = (await accountStatus(address)).balances[tok];
+            const need = Number(wrap) / 1e7;
+            if (pub < need) {
+              const f = (n: number) => n.toLocaleString("en-US", { maximumFractionDigits: 0 });
+              throw new Error(`Not enough ${tok}: this order needs ${f(need)} more ${tok} in the confidential token, your wallet has ${f(pub)} ${tok}. Use "Get demo tokens" or lower the quantity.`);
+            }
+          }
           step(wrap > 0n ? "Wrapping tokens into the confidential token (this amount is public)…" : "Merging received funds…");
           await conf.wrapAndMerge(signer, side, wrap > 0n ? wrap : 0n);
         }
