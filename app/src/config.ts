@@ -2,7 +2,7 @@
 const env = import.meta.env;
 
 export const NET = {
-  /** "testnet" (default) or "local" (stellar/quickstart via docker compose --profile local). */
+  /** "testnet" (default) or "local" (a stellar/quickstart network). */
   name: ((env.VITE_NETWORK as string | undefined) ?? "testnet") as "testnet" | "local",
   passphrase: env.VITE_NETWORK_PASSPHRASE as string,
   rpc: env.VITE_RPC_URL as string,

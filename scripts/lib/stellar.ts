@@ -1,8 +1,8 @@
 // Shared network helpers. Keys live in the Stellar CLI keystore (~/.config/stellar) or, on a
 // host, in FATHOM_KEY_* environment variables; never in this repo.
 //
-// FATHOM_NETWORK=testnet (default) or local (stellar/quickstart, docker compose --profile local).
-// FATHOM_RPC_URL / FATHOM_HORIZON_URL / FATHOM_FRIENDBOT_URL override the URLs (e.g. inside compose).
+// FATHOM_NETWORK=testnet (default) or local (a stellar/quickstart network).
+// FATHOM_RPC_URL / FATHOM_HORIZON_URL / FATHOM_FRIENDBOT_URL override the URLs.
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";

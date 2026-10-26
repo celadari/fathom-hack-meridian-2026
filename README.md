@@ -19,6 +19,21 @@
 > Testnet demo. USTRY and USDC here are demo assets from our own test issuer, not the real Etherfuse
 > USTRY or Circle USDC. The USTRY NAV and the thin-DEX price are demo feeds we set, and the app tags them.
 
+<p align="center"><img src="docs/screenshots/trade.png" alt="Fathom: the Trade page" width="900"></p>
+
+## Contents
+
+1. [The problem](#the-problem): thin-DEX prices and the February 2026 exploit
+2. [The idea](#the-idea): sealed auctions → a price and a measured depth
+3. [How Fathom works](#how-fathom-works): one auction, step by step · [what is hidden](#what-is-hidden-and-until-when)
+4. [A tour of the app](#a-tour-of-the-app): every page, with screenshots
+5. [Architecture](#architecture): components, contracts and who calls what
+6. [Repository structure](#repository-structure)
+7. [Run it locally](#run-it-locally): the app in two commands, your own stack, tests
+8. [Reference](#reference): [contract IDs](#contract-ids-testnet) · [contracts and methods](#contracts) ·
+   [confidential deposits](#confidential-deposits) · [honest limits](#honest-limits) ·
+   [toolchain](#toolchain-pinned) · [glossary](#glossary)
+
 ---
 
 ## The problem
@@ -132,145 +147,144 @@ and demo tokens.
 
 ## Architecture
 
+**Who talks to whom.** Your browser signs with your wallet and talks to Stellar directly; the demo
+server only runs the bots, the auction loop, the faucet and the confidential payouts.
+
 ```mermaid
 flowchart LR
-  subgraph Browser["Browser · app/ (React + Vite, Cloudflare Pages)"]
-    UI["React app"]
-    ZK["Web Workers: order proof (Noir beta.9)<br/>confidential proofs (OpenZeppelin, beta.11)"]
-    W["Freighter wallet"]
+  subgraph You["Your browser"]
+    APP["Fathom app<br/>React · Cloudflare Pages"]
+    WK["Web Workers<br/>order proof · confidential proofs"]
+    FR["Freighter wallet"]
   end
-  subgraph Stellar["Stellar testnet · Soroban contracts"]
-    A["fathom-auction<br/>commit → reveal → close → pay"]
-    O["fathom-oracle<br/>SEP-40 price + depth per asset"]
-    CT["cUSDC / cUSTRY<br/>OpenZeppelin confidential tokens"]
-    V["UltraHonk verifier (OpenZeppelin)"]
-    PB["demo-pool-b<br/>Fathom price + depth cap"]
-    PA["demo-pool-a<br/>last DEX price"]
-    FEEDS["mock-nav · mock-dex-price<br/>(demo feeds, set by us)"]
+  subgraph Chain["Stellar testnet (Soroban)"]
+    AUC["fathom-auction"]
+    ORA["fathom-oracle"]
+    CT["cUSDC · cUSTRY<br/>confidential tokens"]
+    POOLS["demo pools A · B"]
   end
-  subgraph Server["Demo server · scripts/ (GCE e2-micro, behind a Cloudflare Worker + Tunnel)"]
-    LOOP["auction loop · bots · faucet<br/>settlement: proves payouts with the auction's key"]
+  subgraph Host["Demo server (Compute Engine VM)"]
+    DS["bots · auction loop · faucet<br/>settlement prover"]
   end
-  UI --> ZK
-  UI --> W
-  W -- "place / reveal" --> A
-  A -- "confidential transfers" --> CT
-  CT -- "verify proofs" --> V
-  A -- "record() on every close" --> O
-  O -. "NAV" .-> FEEDS
-  PB -- "lastprice, liquidity" --> O
-  PA -- "price" --> FEEDS
-  UI -- "reads, events" --> Stellar
-  UI -- "faucet, presenter controls" --> LOOP
-  LOOP -- "bot orders, close, payouts" --> Stellar
+  CF["Cloudflare Worker + Tunnel<br/>(no public IP on the VM)"]
+  APP --> WK
+  APP -- "sign" --> FR
+  FR -- "transactions" --> Chain
+  APP -- "reads, events" --> Chain
+  APP -- "faucet · presenter controls" --> CF --> DS
+  DS -- "bot orders · closes · proved payouts" --> Chain
 ```
 
-- **Push, not pull.** Each close pushes one report to the oracle; oracle reads never call another
-  contract, so lenders get cheap, predictable reads.
-- **Keys never in the browser.** Bots, admin, attacker and the auction's confidential key live on the
-  demo server (Secret Manager on the VM). The browser only ever signs with your wallet.
-- **Hosting at $0/month:** a free-tier Google Compute Engine VM with no public IPv4, reached only through
-  a Cloudflare Tunnel and a Worker on `workers.dev`; the app on Cloudflare Pages. All Terraform, see
-  [infra/README.md](infra/README.md).
+**What each contract does, and who calls it.**
+
+```mermaid
+flowchart TB
+  U["Trader"] -- "place_order_confidential · reveal_confidential" --> AUC["fathom-auction<br/>sealed orders · uniform-price clearing · payouts"]
+  U -- "register · deposit (wrap) · merge" --> CT["cUSDC / cUSTRY<br/>OpenZeppelin confidential tokens"]
+  AUC -- "confidential_transfer (deposits in, payouts out)" --> CT
+  CT -- "verify_proof" --> V["UltraHonk verifier<br/>(OpenZeppelin, non-ZK)"]
+  CT -- "auditor key" --> AUD["auditor registry"]
+  CT -- "wraps" --> SAC["USDC / USTRY<br/>Stellar Asset Contracts"]
+  SET["Settlement server"] -- "merge_confidential · open_deposit · pay_confidential" --> AUC
+  ANY["Anyone"] -- "close_auction" --> AUC
+  AUC -- "record(report) on every close" --> ORA["fathom-oracle<br/>SEP-40 price · depth · lowest depth"]
+  ORA -- "nav()" --> NAV["mock-nav<br/>(demo feed, set by us)"]
+  PB["demo-pool-b<br/>Fathom lender"] -- "lastprice · liquidity" --> ORA
+  PA["demo-pool-a<br/>naive lender"] -- "price()" --> DEX["mock-dex-price<br/>(thin DEX, anyone can trade)"]
+  style PA fill:#FDECEC,stroke:#E5484D
+  style PB fill:#EEF9F1,stroke:#40B66B
+```
+
+- **Push, not pull.** Each close pushes one report to the oracle in the same transaction; oracle reads
+  never call another contract, so lenders get cheap, predictable reads.
+- **Keys never in the browser.** The bots', admin's, attacker's and the auction's confidential keys live on
+  the demo server (Google Secret Manager on the VM). The browser only signs with your wallet.
+- **The auction cannot prove its own payouts** (a contract cannot keep a secret key), so the settlement
+  server proves them; the contract checks every amount and recipient. See [honest limits](#honest-limits).
+- **Hosting at $0/month:** a free-tier Compute Engine VM with no public IPv4, reachable only through a
+  Cloudflare Tunnel and a Worker on `workers.dev`; the app on Cloudflare Pages; all in Terraform
+  ([infra/README.md](infra/README.md)).
 
 ## Repository structure
 
 ```text
 fathom/
-├── contracts/                    Soroban smart contracts (Rust, soroban-sdk 28)
-│   ├── fathom-auction/           sealed orders, reveal, uniform-price clearing, payouts
-│   │   └── src/confidential.rs   confidential deposits: commitment checks, proved payouts
+├── contracts/                    Soroban contracts (Rust, soroban-sdk 28)
+│   ├── fathom-auction/           sealed orders, reveal, clearing, payouts
+│   │   └── src/
+│   │       ├── lib.rs            orders, reveal, close, settle, admin, views
+│   │       ├── confidential.rs   confidential deposits: commitment checks, proved payouts
+│   │       ├── clearing.rs       uniform-price clearing on the tick grid
+│   │       └── commitment.rs     Poseidon2 commitment (matches the Noir circuit)
 │   ├── fathom-oracle/            SEP-40 price + depth per asset, fed by auction pushes
-│   ├── demo-pool-a/              naive lender: values collateral at the DEX price
-│   ├── demo-pool-b/              Fathom lender: Fathom price + depth cap, records rejections
+│   ├── demo-pool-a/              naive lender (last DEX price)
+│   ├── demo-pool-b/              Fathom lender (Fathom price + depth cap, recorded rejections)
 │   ├── mock-nav/                 demo NAV feed (set by us)
 │   └── mock-dex-price/           demo thin-DEX last price (anyone can move it)
-├── crates/fathom-common/         types and client interfaces shared by the contracts
-├── circuits/order/               Noir circuit: the order is on the price grid and funded
-├── app/                          React + Vite frontend
-│   ├── src/screens/              Trade, Auction, Results, Price & depth, Attack demo, How it works
-│   ├── src/stellar/              wallet, commitments, confidential tokens, contract client
+├── crates/fathom-common/         types and clients shared by the contracts
+├── circuits/order/               Noir circuit: the order is on the grid and funded (nargo beta.9)
+├── vendor/openzeppelin-confidential/   OpenZeppelin confidential token, verifier, auditor (wasm + provenance)
+├── app/                          frontend (React 19, Vite, TypeScript)
+│   ├── src/screens/              Trade, AuctionLive, Close (Results), Liquidity (Price & depth), Replay (Attack demo), HowItWorks
+│   ├── src/components/           header, sealing modal, step animations, Trade background, …
+│   ├── src/stellar/              wallet, contract client, commitments, confidential tokens, your orders
 │   ├── src/zk/                   proving in Web Workers (order proof, confidential proofs)
+│   ├── src/demo/                 presenter controls (shown only with the demo token)
 │   └── tools/                    browser end-to-end test, screenshots, benchmarks
-├── scripts/                      deploy, demo server (bots, auction loop, settlement), CLI demos
+├── scripts/                      TypeScript: deploy, demo server, CLI demos
 │   ├── config.ts                 every parameter in one place
-│   └── lib/confidential.ts       confidential tokens on the server side
-├── vendor/openzeppelin-confidential/   OpenZeppelin confidential token contracts (wasm, provenance)
-├── deployments/                  contract ids per network (public)
+│   ├── deploy.ts                 idempotent testnet deployment
+│   ├── demo-server.ts            HTTP API: faucet, presenter actions, auction loop
+│   └── lib/                      demo.ts (bots, loop, settlement) · confidential.ts · stellar.ts · fathom.ts
+├── deployments/                  public contract ids per stack (testnet-confidential.json, testnet.json)
 ├── infra/                        Terraform: GCE VM, Cloudflare Pages/Tunnel/Worker, Workload Identity
-├── docker/, docker-compose.yml   containers for the app and the demo server
+├── docker/                       the demo server's container image (used by the VM)
 ├── designs/                      the original screen designs
-└── docs/                         testnet run logs, design diff, number audit, screenshots
+└── docs/                         testnet run logs, number audit, design diff, screenshots, logo
 ```
 
-## Run it
+## Run it locally
+
+**1. Prerequisites:** Node 24. To trade, the [Freighter](https://freighter.app) wallet set to **Testnet**.
+
+**2. Run the app** against the live testnet contracts and the hosted demo server (no keys, no setup):
 
 ```bash
-# 1. Contracts (Rust 1.92, stellar-cli 28.1)
-cargo test                                  # 41 contract tests
+cd app
+npm install
+npm run dev            # http://localhost:5173
+```
+
+In the app, connect Freighter, then use the funding panel under the order form: **Fund with Friendbot**,
+**Add trustlines**, **Get demo tokens**. Then place an order; auctions close every ~10 minutes.
+
+**3. Optional: your own stack on testnet** (your own contracts, bots and demo server). Also needs
+Rust 1.92 and stellar-cli 28.1.
+
+```bash
+cargo test                                   # 41 contract tests
 cd scripts && npm install
-npm run deploy                              # idempotent; confidential stack by default
-
-# 2. Demo server (keys from the Stellar CLI keystore, 127.0.0.1 only, no token)
-npm run demo-server -- --loop               # --loop: bots, reveals, closes, payouts, continuously
-
-# 3. Circuit (nargo 1.0.0-beta.9, bb 0.87.0): test, prove the example, write the vk
-../circuits/build.sh
-
-# 4. App
-cd ../app && npm install && npm run dev      # http://localhost:5173 (confidential stack)
+export FATHOM_DEPLOYMENT=my-testnet          # your own deployments/my-testnet.json
+npm run deploy                               # creates your keys (Stellar CLI keystore), tokens and contracts
+set -a; . ../.env.local; set +a              # the auction's confidential key, created by deploy
+npm run demo-server -- --loop                # bots, auction loop, payouts on http://127.0.0.1:8787
+# in another terminal:
+cd app && DEMO_PROXY_TARGET=http://127.0.0.1:8787 npm run dev
 ```
 
-`CONFIDENTIAL_DEPOSITS=false` (scripts) and `npm run dev:fixed` (app) run the fixed-size-deposit stack
-instead. To use the hosted demo server from a local app:
-`DEMO_PROXY_TARGET=https://fathom-demo-api.<subdomain>.workers.dev npm run dev`.
+`deploy` also writes your contract ids into `app/.env.confidential`. Add `CONFIDENTIAL_DEPOSITS=false`
+(scripts) and use `npm run dev:fixed` (app) for the fixed-size-deposit variant.
 
-Tests:
+**4. Tests**
 
 ```bash
-cargo test                       # contracts
-cd app && npm test               # unit tests (commitment parity, tx retry)
+cargo test                       # contracts (41)
+cd app && npm test               # app unit tests (11): commitment parity, tx retry
 node tools/e2e.mjs               # full browser-driven run on testnet; logs every stellar.expert link
+../circuits/build.sh             # Noir circuit: test, prove the example, write the verification key
 ```
 
-### Docker Compose (full demo on localhost)
-
-```bash
-[ -f .env.local ] || cp .env.example .env.local               # gitignored
-# Testnet demo keys from your Stellar CLI keystore. Load .env.local first: it holds the auction's
-# confidential key (FATHOM_CONF_AUCTION_SK), which the export copies; overwriting without it loses it.
-set -a; . ./.env.local; set +a
-(cd scripts && npx tsx export-demo-secrets.ts) > .env.local.new && mv .env.local.new .env.local
-docker compose up -d --build                                 # http://localhost:8080  (add ?demo)
-```
-
-| Service | What | Profile |
-|---|---|---|
-| `app` | the Vite build on unprivileged nginx (port 8080), proxying `/demo` to the demo server | default |
-| `demo-server` | demo controls + auction loop (testnet), keys from `.env.local`, state on a volume | default |
-| `app-dev` | Vite with hot reload on http://localhost:5173 | `dev` |
-| `stellar` | `stellar/quickstart` local network (protocol 29, unlimited limits) on :8000 | `local` |
-| `demo-server-local` | demo server pointed at the local network, on :8788 | `local` |
-
-All images run as non-root, read-only, with health checks and `restart: unless-stopped`; ports are
-published on 127.0.0.1 only, so the local demo server needs no token. The default network is testnet.
-
-Local network instead of testnet:
-
-```bash
-docker compose --profile local up -d stellar                     # wait for it to be healthy
-(cd scripts && FATHOM_NETWORK=local npm run deploy)               # contracts + deployments/local.json + app/.env
-DEMO_PROXY_TARGET=http://demo-server-local:8787 docker compose --profile local --profile dev up -d
-# app with hot reload on :5173 (reads app/.env); run `npm run deploy` again to switch app/.env back to testnet
-```
-
-### Hosted demo
-
-Google Compute Engine free-tier VM (demo server) + Cloudflare Pages (app) + a Worker on `workers.dev`
-that reaches the VM through Cloudflare Tunnel with Workers VPC. No domain, no inbound access to the VM,
-$0/month, all in Terraform (HCP Terraform with GCP Workload Identity Federation):
-[infra/README.md](infra/README.md).
-
+**Deploying the hosted demo** (VM, tunnel, Worker, Pages) is described in [infra/README.md](infra/README.md).
 The presenter controls (seed bots, next auction, run the attack live) appear only with
 `?demo=<token>`; visitors never see them.
 
@@ -278,7 +292,7 @@ The presenter controls (seed bots, next auction, run the attack live) appear onl
 
 ### Contract IDs (testnet)
 
-The default stack (`deployments/testnet-confidential.json`). The fixed-size stack's IDs are in
+The live stack, from `deployments/testnet-confidential.json`. The fixed-size stack is in
 `deployments/testnet.json`.
 
 <!-- contract-ids:start -->
@@ -300,68 +314,73 @@ The default stack (`deployments/testnet-confidential.json`). The fixed-size stac
 | confidential auditor | [`CDALVDWVEQI56NRDAFO2GU5YD77KFNNWNFEMLWSAZYVPWBBNIMLZU7AM`](https://stellar.expert/explorer/testnet/contract/CDALVDWVEQI56NRDAFO2GU5YD77KFNNWNFEMLWSAZYVPWBBNIMLZU7AM) | OpenZeppelin auditor key registry |
 <!-- contract-ids:end -->
 
-### Auction contract (`contracts/fathom-auction`)
+### Contracts
 
-| Step | Call | What happens |
+All amounts and prices are 7-decimal fixed point (`$1.06 = 10_600_000`).
+
+#### `fathom-auction`: sealed orders, clearing, payouts
+
+| Method | Who | What it does |
 |---|---|---|
-| Seal | `place_order(owner, commitment, deposit_token, deposit_amount, standing)` | Commitment + deposit into escrow. Deposit is one of 10k / 50k / 250k. USDC deposit = buy, USTRY = sell. |
-| Reveal | `reveal(owner, order_id, side, price_tick, qty, salt)` | During the reveal window. Contract recomputes the Poseidon2 commitment and checks funding. |
-| Close | `close_auction()` | Anyone, after the reveal window. One uniform price maximizing matched volume; fills recorded; standing buys carried; unrevealed orders lose 1%. |
-| Settle | `settle(order_ids)` | Anyone. Pays out recorded fills and refunds, in batches. |
-| Seal (confidential) | `place_order_confidential(owner, commitment, side, standing, data)` | `data` is a confidential transfer owner → auction (proved in the browser); its commitment `c_transfer` is stored with the order. Any amount. |
-| Reveal (confidential) | `reveal_confidential(…, amount, blinding)` | Checks `amount·G + blinding·H == c_transfer` (Grumpkin, `stellar-contract-utils`), then the usual checks including funding. |
-| Unrevealed (confidential) | `open_deposit(order_id, amount, blinding)` | After the close: releases an unrevealed deposit minus 1%, given its opening. |
-| Pay (confidential) | `pay_confidential(order_id, base, amount, blinding, data)` | Settlement server's proved transfer auction → owner; its opening must equal the recorded amount. Always to the order's owner. |
-
-**What is hidden:** price and quantity, until the close; by default also the deposit amount (until the
-reveal). **What is visible:** side (from the deposit token). With `CONFIDENTIAL_DEPOSITS=false`, the
-deposit size (one of three fixed sizes) is visible too.
+| `place_order_confidential(owner, commitment, side, standing, data)` | trader | Seals an order: stores the commitment and takes a confidential deposit (`data` = an OpenZeppelin `TransferData`, owner → auction). Any amount; the side is public. |
+| `reveal_confidential(owner, order_id, side, price_tick, qty, salt, amount, blinding)` | trader | In the reveal window: checks the order against its commitment and `amount·G + blinding·H == c_transfer`, then that the deposit covers the order. |
+| `close_auction()` | anyone | After the reveal window: one uniform price that maximizes matched volume; records fills, refunds and the 1% penalty; carries standing buys; pushes the report to the oracle. |
+| `merge_confidential()` | anyone | Folds the auction's received confidential deposits into its spendable balance. |
+| `open_deposit(order_id, amount, blinding)` | anyone with the opening | After the close: releases an unrevealed confidential deposit minus the penalty. |
+| `pay_confidential(order_id, base, amount, blinding, data)` | settlement server | Pays one recorded amount with a proved confidential transfer; the opening must equal the recorded amount, and it always goes to the order's owner. |
+| `place_order(owner, commitment, deposit_token, deposit_amount, standing)` · `reveal(…)` · `settle(order_ids)` | trader · anyone | The fixed-size-deposit variant (`CONFIDENTIAL_DEPOSITS=false`): deposits of 10k / 50k / 250k, public payouts in batches. |
+| `register_confidential(ctoken, auditor_id, data)` · `set_confidential(base, quote)` | admin | Registers the auction as a confidential account (proof made off-chain with its key) and turns the confidential path on. |
+| `set_oracle(oracle)` · `set_params(params)` · `withdraw_fees()` · `fast_forward()` | admin | Wiring, parameters, collected penalties; `fast_forward` ends the current window now (demo only). |
+| `current_auction()` · `closing_auction()` · `auction(id)` · `order(id)` · `orders_in(auction)` · `orders_of(owner)` · `standing_book()` · `fills(auction)` · `result(auction)` · `last_result()` · `conf_deposit(order_id)` · `commitment_of(…)` · `price_of(tick)` | anyone | Views used by the app. |
 
 `commitment = Poseidon2(side, price_tick, qty, salt, owner_field)` over BN254, matching Noir's
-`Poseidon2::hash` (a test pins a vector computed with nargo 1.0.0-beta.9).
-`owner_field = sha256(owner G… strkey)` with its first byte zeroed.
+`Poseidon2::hash` (a test pins a vector from nargo 1.0.0-beta.9); `owner_field = sha256(strkey)` with the
+first byte zeroed. Close and settle are separate because testnet caps events at 16 KB per transaction.
+Errors: [`types.rs`](contracts/fathom-auction/src/types.rs).
 
-Close and settle are separate because testnet caps events at 16 KB per transaction and every
-token transfer emits one; a busy close would not fit. Measured: close with 24 orders ≈ 4.8M CPU instructions,
-settle of 8 orders ≈ 5.9M.
+#### `fathom-oracle`: price and depth per asset (SEP-40)
 
-A transaction can fail on-chain when the state changed after it was simulated (a window ended, or another
-order landed first). Clients re-simulate and resend FAILED transactions (`scripts/lib/fathom.ts`,
-`app/src/lib/tx.ts`). See "Concurrency notes" below.
+| Method | Who | What it does |
+|---|---|---|
+| `register_asset(asset, auction, nav_feed)` | admin | Lets exactly one auction report for an asset, with its NAV feed. More assets need no redeploy. |
+| `record(asset, report)` | that auction | Stores one auction's result and recomputes everything; reads never call out. |
+| `lastprice(asset)` | lenders | Median of the last 7 clearing prices, capped at NAV. `None` if the last auction had < $10k notional or < 5 orders. |
+| `price(asset, timestamp)` · `prices(asset, n)` · `last_timestamp()` · `base()` · `assets()` · `decimals()` · `resolution()` | lenders | The rest of SEP-40 (what Blend's oracle-aggregator needs). |
+| `depth(asset)` | lenders | Open standing buy orders priced at most 5% below NAV. |
+| `liquidity(asset)` | lenders | Price, NAV, haircut, depth, **lowest depth over the window**, orders, notional, status. |
+| `state(asset)` · `asset_config(asset)` · `params()` · `set_params(…)` | anyone · admin | Internals and parameters. |
 
-Presenter mode: `fast_forward()` (admin) ends the current commit window, or the reveal window, immediately.
+#### `demo-pool-a` and `demo-pool-b`: two lenders, one difference
 
-### Oracle contract (`contracts/fathom-oracle`)
+Both lend USDC against USTRY up to 75% of the collateral's value. **Pool A** values USTRY at the thin DEX's
+last trade (`mock-dex-price`). **Pool B** values it at Fathom's `lastprice` and refuses any borrow that would
+take its total USTRY collateral above **50% of the lowest depth** over the oracle's window.
 
-A separate contract so more assets can be added without redeploying. The admin registers each asset
-with the one auction contract allowed to report for it: `register_asset(asset, auction, nav_feed)`.
-After each close, that auction pushes one `AuctionReport` (`record`). The oracle computes everything
-then and stores it per asset; reads never call another contract.
+| Method | Pool | What it does |
+|---|---|---|
+| `borrow(user, collateral_qty, borrow_amount)` | A, B | Takes collateral, lends if the checks pass; fails with the first reason otherwise. |
+| `assess(user, collateral_qty, borrow_amount)` | B | Every check with its numbers: collateral value at the Fathom price, max loan, depth cap vs requested. |
+| `attempt_borrow(…)` | B | Same as `borrow`, but a rejection is **recorded on-chain** (`borrow_rejected` event, no funds moved), so the attack demo has a transaction to show. |
+| `cap_status()` | B | The current depth cap and how much of it is used. |
+| `position(user)` · `tvl()` · `config()` | A, B | Views (`total_collateral()` on A). |
 
-| Read | Returns |
-|---|---|
-| `lastprice(asset)` (SEP-40) | median of the last 7 clearing prices, capped at NAV. `None` if the last auction had < $10k notional or < 5 orders |
-| `price`, `prices`, `base`, `assets`, `decimals`, `resolution` (SEP-40) | published price history, newest first for `prices` |
-| `depth(asset)` | open standing-buy quantity priced ≥ NAV − 5% |
-| `liquidity(asset)` | price, NAV, haircut, depth, lowest depth over the window, order count, notional, status |
+Error codes (both pools): 1 no price, 2 depth too low, 3 not enough collateral, 4 pool empty, 5 bad amount.
 
-Even-length median (fewer than 7 auctions so far) takes the lower middle value. Assets without a NAV
-feed use the median itself, with no haircut.
+#### `mock-nav` and `mock-dex-price`: demo feeds we set
 
-### Demo pools
+| Contract | Methods | Role |
+|---|---|---|
+| `mock-nav` | `nav()` · `set_nav(nav)` (admin) · `last_update()` · `decimals()` | The USTRY NAV ($1.06), which caps Fathom's price and anchors depth. |
+| `mock-dex-price` | `price()` · `trade(trader, price)` (anyone) · `last_update()` | A thin DEX's "last trade". One `trade` call is the attack's pump. |
 
-- **Pool A** (`demo-pool-a`) values USTRY at the thin DEX price. One trade pumps it ×100 and the pool is drained.
-- **Pool B** (`demo-pool-b`) values USTRY at Fathom `lastprice` × LTV and rejects any borrow that would take
-  total USTRY collateral above 50% of Fathom's lowest depth over the window (`Error #2, DepthTooLow`).
+#### External contracts
 
-Both use LTV 75% (each pool's own choice) and share error codes: 1 no price, 2 depth too low,
-3 not enough collateral, 4 pool empty, 5 bad amount.
-
-Pool B's `assess` returns every failed check with its numbers (collateral value at the Fathom price,
-max loan, depth cap vs requested). `borrow` fails with the first reason. `attempt_borrow` does the
-same checks but records a rejection on-chain (a `borrow_rejected` event with every reason, no funds
-moved), so the replay has a transaction to link to. It is not called `try_borrow` because Soroban's
-generated Rust client already defines `try_borrow` for `borrow`.
+| Contract | Used methods | Role |
+|---|---|---|
+| OpenZeppelin confidential token (cUSDC, cUSTRY) | `register` · `deposit` · `merge` · `confidential_transfer` · `confidential_balance` | Balances as Pedersen commitments; each spend is proved (UltraHonk, non-ZK). [vendor/openzeppelin-confidential](vendor/openzeppelin-confidential/README.md) |
+| OpenZeppelin verifier and auditor | `verify_proof` · `register_verification_key` · `register_key` · `get_key` | Proof checks for the confidential tokens; auditor key registry. |
+| Order verifier (rs-soroban-ultrahonk) | `verify_proof` | Only for the "Verifier demo" panel on How it works, with a dummy order. |
+| USDC / USTRY Stellar Asset Contracts | `transfer` · `balance` | The demo tokens from our test issuer. |
 
 ### Confidential deposits
 
@@ -441,12 +460,6 @@ More in [docs/testnet-run.md](docs/testnet-run.md).
   that lands just after another one does not fail ("byte-write resources exceeds amount specified").
 - Transactions that fail on-chain (nothing applied) are re-simulated and resent after a short random wait.
 
-### Conventions
-
-All prices are 7-decimal fixed point (`$1.06 = 10_600_000`), like Stellar token amounts. Every number
-shown in the app has a documented source: [docs/number-audit.md](docs/number-audit.md); values we set
-ourselves carry a "set by us" tag. Testnet run logs: [docs/testnet-run.md](docs/testnet-run.md).
-
 ### Toolchain (pinned)
 
 | Tool | Version | Why this version |
@@ -463,3 +476,22 @@ ourselves carry a "set by us" tag. Testnet run logs: [docs/testnet-run.md](docs/
 Testnet runs protocol 29 (the verifier needs ≥ 28). Installing bb 0.87.0: `bbup -v 0.87.0` builds a wrong
 release URL; download it directly:
 `curl -L https://github.com/AztecProtocol/aztec-packages/releases/download/v0.87.0/barretenberg-amd64-linux.tar.gz | tar -xzC ~/.bb`
+
+### Glossary
+
+| Term | Meaning |
+|---|---|
+| **RWA token** | A token for a real-world asset, here a tokenized US Treasury fund (USTRY). |
+| **NAV** | Net asset value: what one token is worth according to its issuer. A demo feed here. |
+| **Sealed order** | An order whose price and quantity are hidden behind a commitment until it is revealed. |
+| **Commitment / fingerprint** | A hash (Poseidon2) of the order with a random salt; it binds you to the order without showing it. |
+| **Uniform price** | Every filled order trades at the same clearing price, whatever its limit. |
+| **Standing order** | A buy order locked for 7 days that stays in the book across auctions. Only these count as depth. |
+| **Depth** | How much USTRY could be sold near NAV: standing buy orders within 5% of NAV. |
+| **SEP-40** | Stellar's standard oracle interface (`lastprice`, `price`, …), used by lending protocols such as Blend. |
+| **Confidential token** | An OpenZeppelin token whose balances and transfer amounts are Pedersen commitments. |
+| **Pedersen commitment** | `amount·G + blinding·H` on the Grumpkin curve: hides an amount, opened by disclosing amount and blinding. |
+| **Wrap** | Moving public tokens into the confidential token (the wrapped amount is public). |
+| **UltraHonk, ZK / non-ZK** | The proof system used. Only the non-zero-knowledge flavour can be verified on Soroban today. |
+| **SAC** | Stellar Asset Contract: the Soroban contract for a classic Stellar asset. |
+| **Testnet** | Stellar's public test network; nothing here has real value. |
