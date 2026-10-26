@@ -1,11 +1,10 @@
 locals {
   registry_host = "${var.region}-docker.pkg.dev"
   image         = "${local.registry_host}/${var.project_id}/${google_artifact_registry_repository.fathom.repository_id}/demo-server:${var.image_tag}"
-  # CORS: the Pages production URL, plus the custom domain if there is one.
-  allowed_origins = join(",", compact([
-    "https://${cloudflare_pages_project.app.subdomain}",
-    var.app_hostname == "" ? "" : "https://${var.app_hostname}",
-  ]))
+  # CORS: the Pages production URL only (no custom domain).
+  allowed_origins = "https://${cloudflare_pages_project.app.subdomain}"
+  # Fixed internal IP: the Workers VPC Service targets it through the tunnel.
+  vm_internal_ip = "10.10.0.10"
 }
 
 data "google_compute_image" "ubuntu" {
@@ -30,6 +29,7 @@ resource "google_compute_instance" "demo" {
 
   network_interface {
     subnetwork = google_compute_subnetwork.fathom.id
+    network_ip = local.vm_internal_ip
     stack_type = "IPV4_IPV6"
     # External IPv6 for outbound traffic (not billed). No external IPv4 unless var.external_ipv4.
     ipv6_access_config {
@@ -64,6 +64,7 @@ resource "google_compute_instance" "demo" {
       demo_token_secret = google_secret_manager_secret.manual["demo_token"].secret_id
       tunnel_secret     = google_secret_manager_secret.tunnel_token.secret_id
       allowed_origins   = local.allowed_origins
+      listen_host       = local.vm_internal_ip
     })
   }
 

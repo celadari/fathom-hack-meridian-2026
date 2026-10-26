@@ -28,7 +28,7 @@ flowchart LR
     PB["demo-pool-b<br/>values at Fathom price,<br/>caps by lowest depth"]
     TOK["USTRY / USDC SACs"]
   end
-  subgraph Host["Demo server (scripts/, Fly)"]
+  subgraph Host["Demo server (scripts/, GCE VM via Cloudflare)"]
     DS["demo-server: seed bots, next auction,<br/>attack replay, faucet, auction loop<br/>holds testnet admin/bot/attacker keys"]
   end
   UI --> Seal --> W
@@ -121,8 +121,10 @@ DEMO_PROXY_TARGET=http://demo-server-local:8787 docker compose --profile local -
 
 ### Hosted demo
 
-Google Compute Engine free-tier VM (demo server) + Cloudflare Pages (app) + Cloudflare Tunnel
-(`api.<domain>`), all in Terraform: see [infra/README.md](infra/README.md).
+Google Compute Engine free-tier VM (demo server) + Cloudflare Pages (app, `<project>.pages.dev`) + a
+Worker on `workers.dev` that reaches the VM through Cloudflare Tunnel with Workers VPC. No domain, no
+inbound access to the VM, $0/month. All in Terraform (HCP Terraform with GCP Workload Identity
+Federation): see [infra/README.md](infra/README.md).
 
 ## Honest limits
 

@@ -1,11 +1,11 @@
 output "api_url" {
-  description = "Demo server, through the Cloudflare tunnel. The app's VITE_DEMO_API is <api_url>/demo."
-  value       = "https://api.${var.domain}"
+  description = "Demo API Worker (workers.dev). The app's VITE_DEMO_API is <api_url>/demo."
+  value       = "https://${cloudflare_workers_script.api.script_name}.${var.workers_dev_subdomain}.workers.dev"
 }
 
-output "app_urls" {
-  description = "Where the app is served (also the CORS allow-list)."
-  value       = split(",", local.allowed_origins)
+output "app_url" {
+  description = "The app on Cloudflare Pages (also the only CORS origin)."
+  value       = local.allowed_origins
 }
 
 output "pages_project_name" {

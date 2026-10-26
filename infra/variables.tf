@@ -20,12 +20,7 @@ variable "zone" {
 }
 
 variable "cloudflare_account_id" {
-  description = "Cloudflare account that owns the zone, the Pages project and the tunnel."
-  type        = string
-}
-
-variable "domain" {
-  description = "Cloudflare zone, e.g. example.com. The demo API is served at api.<domain>."
+  description = "Cloudflare account for the Pages project, the tunnel and the API Worker."
   type        = string
 }
 
@@ -33,12 +28,6 @@ variable "pages_project_name" {
   description = "Cloudflare Pages project name; the app is served at <name>.pages.dev."
   type        = string
   default     = "fathom"
-}
-
-variable "app_hostname" {
-  description = "Optional custom domain for the app (e.g. fathom.example.com). Empty: only <name>.pages.dev."
-  type        = string
-  default     = ""
 }
 
 variable "image_tag" {
@@ -51,4 +40,9 @@ variable "external_ipv4" {
   description = "Fallback: give the VM an external IPv4 (billed, about $3.65/month). Default false: IPv6 egress only, $0."
   type        = bool
   default     = false
+}
+
+variable "workers_dev_subdomain" {
+  description = "Your account's workers.dev subdomain (Cloudflare dashboard → Workers & Pages → Settings): the API is https://fathom-demo-api.<this>.workers.dev."
+  type        = string
 }

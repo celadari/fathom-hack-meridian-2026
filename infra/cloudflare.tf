@@ -1,38 +1,18 @@
-data "cloudflare_zone" "this" {
-  filter = {
-    name = var.domain
-  }
-}
+# No domain needed. The app is on <project>.pages.dev. The demo API is a Worker on
+# fathom-demo-api.<subdomain>.workers.dev that reaches the VM through Cloudflare Tunnel with
+# Workers VPC (a VPC Service: no public hostname, no DNS record, no inbound access on the VM).
 
-# The app: a direct-upload Pages project (scripts/deploy-frontend.sh runs wrangler pages deploy).
 resource "cloudflare_pages_project" "app" {
   account_id        = var.cloudflare_account_id
   name              = var.pages_project_name
   production_branch = "main"
 }
 
-resource "cloudflare_pages_domain" "app" {
-  count        = var.app_hostname == "" ? 0 : 1
-  account_id   = var.cloudflare_account_id
-  project_name = cloudflare_pages_project.app.name
-  name         = var.app_hostname
-}
-
-resource "cloudflare_dns_record" "app" {
-  count   = var.app_hostname == "" ? 0 : 1
-  zone_id = data.cloudflare_zone.this.id
-  name    = var.app_hostname
-  type    = "CNAME"
-  content = cloudflare_pages_project.app.subdomain
-  proxied = true
-  ttl     = 1
-}
-
-# The demo API: a named tunnel from the VM (outbound only) to api.<domain>.
 resource "random_bytes" "tunnel_secret" {
   length = 32
 }
 
+# Remotely managed tunnel run by cloudflared on the VM (outbound QUIC only).
 resource "cloudflare_zero_trust_tunnel_cloudflared" "api" {
   account_id    = var.cloudflare_account_id
   name          = "fathom-demo"
@@ -40,32 +20,40 @@ resource "cloudflare_zero_trust_tunnel_cloudflared" "api" {
   tunnel_secret = random_bytes.tunnel_secret.base64
 }
 
-resource "cloudflare_zero_trust_tunnel_cloudflared_config" "api" {
-  account_id = var.cloudflare_account_id
-  tunnel_id  = cloudflare_zero_trust_tunnel_cloudflared.api.id
-  config = {
-    ingress = [
-      {
-        hostname = "api.${var.domain}"
-        service  = "http://127.0.0.1:8787"
-      },
-      {
-        service = "http_status:404"
-      },
-    ]
-  }
-}
-
 data "cloudflare_zero_trust_tunnel_cloudflared_token" "api" {
   account_id = var.cloudflare_account_id
   tunnel_id  = cloudflare_zero_trust_tunnel_cloudflared.api.id
 }
 
-resource "cloudflare_dns_record" "api" {
-  zone_id = data.cloudflare_zone.this.id
-  name    = "api.${var.domain}"
-  type    = "CNAME"
-  content = "${cloudflare_zero_trust_tunnel_cloudflared.api.id}.cfargotunnel.com"
-  proxied = true
-  ttl     = 1
+# The demo server as a private service behind the tunnel: the VM's fixed internal IP, port 8787.
+resource "cloudflare_connectivity_directory_service" "demo" {
+  account_id = var.cloudflare_account_id
+  name       = "fathom-demo-server"
+  type       = "http"
+  http_port  = 8787
+  host = {
+    ipv4 = local.vm_internal_ip
+    network = {
+      tunnel_id = cloudflare_zero_trust_tunnel_cloudflared.api.id
+    }
+  }
+}
+
+resource "cloudflare_workers_script" "api" {
+  account_id         = var.cloudflare_account_id
+  script_name        = "fathom-demo-api"
+  main_module        = "worker.js"
+  content            = file("${path.module}/templates/worker.js")
+  compatibility_date = "2026-10-01"
+  bindings = [{
+    type       = "vpc_service"
+    name       = "DEMO"
+    service_id = cloudflare_connectivity_directory_service.demo.service_id
+  }]
+}
+
+resource "cloudflare_workers_script_subdomain" "api" {
+  account_id  = var.cloudflare_account_id
+  script_name = cloudflare_workers_script.api.script_name
+  enabled     = true
 }

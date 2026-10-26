@@ -2,8 +2,9 @@
 # Fathom demo server VM. Runs at every boot (idempotent).
 #  - Docker (Ubuntu archive) and cloudflared (Cloudflare apt repo), over IPv6: the VM has no external IPv4.
 #  - fathom-secrets: reads the keys, demo token and tunnel token from Secret Manager into /run (tmpfs).
-#  - fathom-demo: the demo-server image, Restart=always, host network, listening on 127.0.0.1 only.
-#  - fathom-tunnel: cloudflared, exposing 127.0.0.1:8787 as https://api.<domain>.
+#  - fathom-demo: the demo-server image, Restart=always, host network, on the VM's internal IP
+#    (no firewall rule admits it: only cloudflared on this VM reaches it, for Workers VPC).
+#  - fathom-tunnel: cloudflared, the tunnel Workers VPC uses to reach the demo server.
 set -euo pipefail
 
 PROJECT="${project}"
@@ -13,6 +14,7 @@ KEYS_SECRET="${keys_secret}"
 TOKEN_SECRET="${demo_token_secret}"
 TUNNEL_SECRET="${tunnel_secret}"
 ALLOWED_ORIGINS="${allowed_origins}"
+LISTEN_HOST="${listen_host}"
 
 # e2-micro has 1 GB of RAM: add 1 GB of swap.
 if [ ! -f /swapfile ]; then
@@ -45,7 +47,7 @@ token() { curl -fsS -H 'Metadata-Flavor: Google' http://metadata.google.internal
 secret() { curl -fsS -H "Authorization: Bearer \$(token)" "https://secretmanager.googleapis.com/v1/projects/$PROJECT/secrets/\$1/versions/latest:access" | jq -r .payload.data | base64 -d; }
 install -d -m 0700 /run/fathom
 umask 077
-{ secret "$KEYS_SECRET"; echo; echo "DEMO_TOKEN=\$(secret "$TOKEN_SECRET")"; echo "ALLOWED_ORIGINS=$ALLOWED_ORIGINS"; echo "HOST=127.0.0.1"; } > /run/fathom/demo.env
+{ secret "$KEYS_SECRET"; echo; echo "DEMO_TOKEN=\$(secret "$TOKEN_SECRET")"; echo "ALLOWED_ORIGINS=$ALLOWED_ORIGINS"; echo "HOST=$LISTEN_HOST"; } > /run/fathom/demo.env
 echo "TUNNEL_TOKEN=\$(secret "$TUNNEL_SECRET")" > /run/fathom/tunnel.env
 token | docker login -u oauth2accesstoken --password-stdin "https://$REGISTRY_HOST" >/dev/null
 EOF
