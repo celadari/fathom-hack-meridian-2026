@@ -52,7 +52,7 @@ Sources: [VPC pricing: external IPs](https://cloud.google.com/vpc/pricing-announ
   the demo token: you add those by hand, so they never reach Terraform state. The tunnel token is the
   exception: Terraform creates the tunnel, so it already holds it, and writes it to Secret Manager.
 - **On the VM** secrets are read at every boot into `/run/fathom` (tmpfs). The demo server listens on
-  127.0.0.1, demo actions need the bearer token, every POST is rate limited per IP and the faucet per
+  the VM's internal IP (no firewall rule admits it; only the local cloudflared reaches it), demo actions need the bearer token, every POST is rate limited per IP and the faucet per
   address, and CORS allows only the Pages URL.
 - **Terraform Cloud** runs impersonate `fathom-terraform` through Workload Identity Federation, limited
   to your organization/project/workspace. Its secrets role cannot read secret values.
