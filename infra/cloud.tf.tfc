@@ -5,7 +5,8 @@ terraform {
   cloud {
     organization = "Hackathon_Meridian_2026"
     workspaces {
-      name = "fathom-infra"
+      name    = "fathom-infra"
+      project = "Default Project" # must match tfc_project in bootstrap (the WIF condition)
     }
   }
 }

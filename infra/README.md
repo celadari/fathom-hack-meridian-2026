@@ -119,7 +119,8 @@ export `CLOUDFLARE_API_TOKEN`, and use the same commands with application-defaul
 ```bash
 infra/scripts/build-and-push.sh                                   # demo-server image → Artifact Registry
 
-# Secret values: by hand, never through Terraform.
+# Secret values: by hand, never through Terraform. Create the empty containers first.
+terraform -chdir=infra apply -target=google_secret_manager_secret.manual
 (cd scripts && npx tsx export-demo-secrets.ts) \
   | gcloud secrets versions add fathom-demo-keys --data-file=-    # the FATHOM_KEY_* lines
 openssl rand -hex 24 | tr -d '\n' > /tmp/fathom-demo-token        # keep this: it unlocks the demo buttons
