@@ -75,6 +75,12 @@ svg * { transform-box: fill-box; }
 
 @keyframes flowDash { from { stroke-dashoffset: 24 } to { stroke-dashoffset: 0 } }
 
+/* Trade background (components/TradeBackdrop.tsx) */
+@keyframes blobDrift { from { transform: translate(0, 0) scale(1) } to { transform: translate(120px, 60px) scale(1.15) } }
+@keyframes sonarWide { 0% { transform: scale(1); opacity: .9 } 100% { transform: scale(9); opacity: 0 } }
+@keyframes rise { 0% { transform: translateY(0); opacity: 0 } 8% { opacity: 1 } 85% { opacity: 1 } 100% { transform: translateY(-110vh); opacity: 0 } }
+@keyframes sway { from { transform: translateX(calc(var(--sway) * -1)) rotate(-6deg) } to { transform: translateX(var(--sway)) rotate(6deg) } }
+
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important } }
 
 /* ?demo: keep page content clear of the fixed demo bar. */

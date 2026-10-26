@@ -8,6 +8,7 @@ import { Header, Page } from "../components/Header";
 import { MyOrdersPanel } from "../components/MyOrdersPanel";
 import { PageIntro } from "../components/PageIntro";
 import { SealModal, type SealState } from "../components/SealModal";
+import { TradeBackdrop } from "../components/TradeBackdrop";
 import { NAV_TITLE, SetByUs } from "../components/SetByUs";
 import { Slice } from "../components/State";
 import { CONFIDENTIAL, DEMO, UNIT } from "../config";
@@ -40,6 +41,10 @@ export function Trade() {
   return (
     <Page minHeight={980}>
       <Header />
+      {/* The backdrop fills at least the window below the header, even when the content is short. */}
+      <div style={{ position: "relative", minHeight: "calc(100vh - 80px)" }}>
+      <TradeBackdrop />
+      <div style={{ position: "relative", zIndex: 1 }}>
       <PageIntro
         center
         title="Trade"
@@ -47,6 +52,8 @@ export function Trade() {
         why="Your price and size stay hidden until the auction closes, so nobody can trade against you; then everyone fills at one price."
       />
       <Slice of={auction} label="the auction" minHeight={400}>{(a) => <TradeWidget a={a} />}</Slice>
+      </div>
+      </div>
     </Page>
   );
 }
