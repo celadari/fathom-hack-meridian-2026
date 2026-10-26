@@ -3,13 +3,14 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --mode confidential",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "test": "vitest run",
     "typecheck": "tsc -b",
     "compare": "node tools/compare.mjs",
-    "frames": "node tools/frames.mjs"
+    "frames": "node tools/frames.mjs",
+    "dev:fixed": "vite"
   },
   "dependencies": {
     "@aztec/bb.js": "0.87.0",
