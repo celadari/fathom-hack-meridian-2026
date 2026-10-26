@@ -8,7 +8,7 @@ ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 API="$(terraform -chdir="$ROOT/infra" output -raw api_url)"
 PROJECT="$(terraform -chdir="$ROOT/infra" output -raw pages_project_name)"
 cd "$ROOT/app"
-npm ci --no-audit --no-fund
+npm install --no-audit --no-fund   # not `npm ci`: it deletes node_modules under a running dev server
 # Default: the CONFIDENTIAL_DEPOSITS stack (app/.env.confidential). APP_MODE=production: fixed-size (app/.env.production).
 VITE_DEMO_API="$API/demo" npx vite build --mode "${APP_MODE:-confidential}"
 npx --yes wrangler@4.152.0 pages deploy dist --project-name "$PROJECT" --branch main --commit-dirty=true
