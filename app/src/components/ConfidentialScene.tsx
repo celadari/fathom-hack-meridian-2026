@@ -13,7 +13,7 @@ const PINK = "#FC72FF";
 const GREEN = "#40B66B";
 
 /** Index of the station the latest stage belongs to (4 = all done). */
-export function stationOf(stages: string[], locked: boolean): number {
+function stationOf(stages: string[], locked: boolean): number {
   if (locked) return STATIONS.length;
   const last = stages[stages.length - 1] ?? "";
   const i = STATIONS.findIndex((s) => s.match.test(last));
