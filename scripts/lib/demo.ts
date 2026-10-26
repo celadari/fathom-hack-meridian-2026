@@ -14,7 +14,8 @@ export const BOTS = ["alice", "bob", "carol", "dan", "eve", "frank", "grace", "h
 const BOT_FUNDS = 400_000;
 const DEPTH_TARGET = 24_800n;
 // Bot openings and the last replay. On the hosted server this points at a persistent volume.
-const STATE_DIR = process.env.FATHOM_STATE_DIR ?? resolve(ROOT, "scripts/.state");
+// Each stack keeps its own state: openings of one auction contract mean nothing to the other.
+const STATE_DIR = resolve(process.env.FATHOM_STATE_DIR ?? resolve(ROOT, "scripts/.state"), CONFIDENTIAL ? "confidential" : ".");
 const OPENINGS = resolve(STATE_DIR, "openings.json");
 const LAST_REPLAY = resolve(STATE_DIR, "last-replay.json");
 /** CONFIDENTIAL: closed auctions whose confidential payouts are not all sent yet (settlement resumes). */
@@ -271,7 +272,8 @@ export async function closeAndSettle(log: (s: string) => void = () => {}): Promi
     save(PENDING_SETTLE, [...new Set([...pending, String(r.auction)])]);
     steps.push(...(await settleConfidential(log)));
   }
-  for (let i = 0; i < info.to_settle.length; i += 8) {
+  // Fixed-size payouts (confidential orders are paid above, with proofs).
+  for (let i = 0; !CONFIDENTIAL && i < info.to_settle.length; i += 8) {
     const { hash: h } = await write(c, "settle", { order_ids: info.to_settle.slice(i, i + 8) });
     steps.push(step(`settled ${Math.min(8, info.to_settle.length - i)} orders`, h));
   }

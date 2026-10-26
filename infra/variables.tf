@@ -46,3 +46,9 @@ variable "workers_dev_subdomain" {
   description = "Your account's workers.dev subdomain (Cloudflare dashboard → Workers & Pages → Settings): the API is https://fathom-demo-api.<this>.workers.dev."
   type        = string
 }
+
+variable "confidential_deposits" {
+  description = "CONFIDENTIAL_DEPOSITS: the demo server runs the confidential-token stack (deployments/testnet-confidential.json, 8-minute auctions). Off: the fixed-size escrow stack."
+  type        = bool
+  default     = false
+}

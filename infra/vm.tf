@@ -65,6 +65,7 @@ resource "google_compute_instance" "demo" {
       tunnel_secret     = google_secret_manager_secret.tunnel_token.secret_id
       allowed_origins   = local.allowed_origins
       listen_host       = local.vm_internal_ip
+      confidential      = var.confidential_deposits
     })
   }
 
