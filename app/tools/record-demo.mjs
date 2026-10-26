@@ -117,7 +117,7 @@ await p.mouse.wheel(0, 700);
 await caption(p, "Standing bids that did not fill stay in the book", "Locked 7 days, cannot be cancelled: that is the depth");
 await pause(p, 6000);
 
-await p.getByRole("link", { name: "Liquidity", exact: true }).click();
+await p.getByRole("link", { name: "Price & depth", exact: true }).click();
 await loaded(p);
 await caption(p, "Published on-chain as a SEP-40 oracle", "Price = median of the last 7 clearings, capped at NAV · depth = locked standing bids near NAV");
 await pause(p, 9000);

@@ -6,13 +6,29 @@ import { DEMO, NET, shortAddr } from "../config";
 import { useFathom } from "../data/useFathom";
 import { useWallet } from "../stellar/wallet";
 
+// 16px line icons (inline, currentColor), one per page.
+const ICON: Record<string, ReactNode> = {
+  trade: <><rect x="2" y="4" width="12" height="9" rx="2" /><path d="M2.5 5 L8 9 L13.5 5" /></>,
+  results: <><path d="M2.5 13.5 h11" /><rect x="3.5" y="8" width="2.4" height="5" rx=".6" /><rect x="6.8" y="4.5" width="2.4" height="8.5" rx=".6" /><rect x="10.1" y="6.5" width="2.4" height="6.5" rx=".6" /></>,
+  depth: <><path d="M2.5 11.5 a5.5 5.5 0 0 1 11 0" /><path d="M8 11.5 L10.8 7.6" /><circle cx="8" cy="11.5" r=".9" /></>,
+  attack: <><path d="M8 2 L13 4 V8 C13 11 10.8 13.2 8 14 C5.2 13.2 3 11 3 8 V4 Z" /><path d="M6 8.2 L7.5 9.7 L10.2 6.8" /></>,
+  how: <><circle cx="8" cy="8" r="6" /><path d="M8 7.2 V11" /><circle cx="8" cy="5" r=".6" /></>,
+};
 const LINKS = [
-  { to: "/", label: "Auction" },
-  { to: "/close", label: "Last close" },
-  { to: "/liquidity", label: "Liquidity" },
-  { to: "/replay", label: "Attack replay" },
-  { to: "/how-it-works", label: "How it works" },
+  { to: "/", label: "Trade", icon: "trade", title: "Place a sealed order in the current auction" },
+  { to: "/close", label: "Results", icon: "results", title: "The last auction's clearing price and fills" },
+  { to: "/liquidity", label: "Price & depth", icon: "depth", title: "What Fathom publishes for lenders: price and liquidity depth" },
+  { to: "/replay", label: "Attack demo", icon: "attack", title: "Replay of the thin-DEX pool drain, with and without Fathom" },
+  { to: "/how-it-works", label: "How it works", icon: "how", title: "How Fathom works, step by step" },
 ];
+
+function NavIcon({ name }: { name: string }) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flex: "none" }}>
+      {ICON[name]}
+    </svg>
+  );
+}
 
 export function Logo({ size }: { size: number }) {
   return (
@@ -77,7 +93,7 @@ function AssetSwitcher() {
 export function Header() {
   const { source } = useFathom();
   const w = useWallet();
-  const linkStyle = (active: boolean): CSSProperties => ({ color: active ? "#131313" : "#7D7D7D", textDecoration: "none", padding: "8px 12px", fontSize: "16px", fontWeight: active ? 535 : 485 });
+  const linkStyle = (active: boolean): CSSProperties => ({ color: active ? "#131313" : "#7D7D7D", textDecoration: "none", padding: "8px 12px", fontSize: "16px", fontWeight: active ? 535 : 485, display: "inline-flex", alignItems: "center", gap: "6px", borderRadius: "12px", background: active ? "#FFEFFF" : "transparent" });
   return (
     <>
       <header style={{ padding: "16px 24px", display: "flex", flexWrap: "wrap", alignItems: "center", gap: "20px" }}>
@@ -87,7 +103,7 @@ export function Header() {
         </Link>
         <nav aria-label="Main" style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
           {LINKS.map((l) => (
-            <NavLink key={l.to} to={l.to} end style={({ isActive }) => linkStyle(isActive)}>{l.label}</NavLink>
+            <NavLink key={l.to} to={l.to} end title={l.title} style={({ isActive }) => linkStyle(isActive)}><NavIcon name={l.icon} />{l.label}</NavLink>
           ))}
         </nav>
         <AssetSwitcher />

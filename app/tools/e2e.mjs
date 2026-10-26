@@ -97,7 +97,7 @@ try {
   await shot("3-close");
 
   log("dashboard");
-  await page.getByRole("link", { name: "Liquidity", exact: true }).click();
+  await page.getByRole("link", { name: "Price & depth", exact: true }).click();
   await page.waitForFunction(() => !document.querySelector('[aria-busy="true"]'), null, { timeout: 30_000 });
   await page.waitForTimeout(3000);
   await shot("4-liquidity");
