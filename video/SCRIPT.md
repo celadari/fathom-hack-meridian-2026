@@ -1,52 +1,36 @@
-# Fathom demo video: voiceover script
+# Fathom: demo video script (2:30)
 
-About 330 words for 2:30 (≈ 2.2 words per second). Timings match the scenes in `src/Main.tsx`
-(each scene fades into the next over two-thirds of a second). Every figure is from the app or its
-sources (Halborn, Protos, Rekt).
+One question carries the whole video: **"Can a lending pool trust this price?"**
+Every number on screen comes from the recorded clips (`public/clips/clips.json`); the voiceover below
+uses the values from the current recording. If you re-record, check the numbers against the captions.
 
-To add it: record yourself reading this, save as `video/public/voiceover.mp3` (one file, starting at
-0:00), and render again. Background music: optional, only a track licensed for reuse, saved as
-`video/public/music.mp3`; it plays at low volume under the voice.
+Record the voiceover to `public/voiceover.mp3` and it is mixed in automatically (`public/music.mp3`
+too, quietly, if you add a track licensed for reuse). Around 340 words, about 140 words a minute.
 
----
+| Time | Scene | On screen | Voiceover |
+|---|---|---|---|
+| 0:00–0:02.5 | **Logo** | Fathom logo · "A price you can lend against, and the depth to prove it." | Fathom: a price you can lend against, and the depth to prove it. |
+| 0:02.5–0:04.5 | **Problem** | "Can a lending pool trust this price?" | Can a lending pool trust this price? |
+| 0:04.5–0:09.5 | | Lending pool asks a thin DEX "What is USTRY worth?"; the DEX says $1.04. | A lending pool needs USTRY's price, so it asks a DEX. Today it says a dollar four. |
+| 0:09.5–0:14.5 | | An attacker makes one trade; the DEX now says $106. Tag: "under $1 of hourly volume". | But this market is thin: under a dollar of volume an hour. One trade sets the price to a hundred and six dollars. |
+| 0:14.5–0:20.5 | | The pool takes "$106": 13,000 USTRY × $106 = $1,378,000 collateral. It lends $1,000,000; its balance drains to $0. | The pool believes it. Thirteen thousand tokens now look like 1.4 million dollars of collateral. It lends a million, and it's empty. |
+| 0:20.5–0:24.5 | | Counter: **$10–11M** drained from a Stellar lending pool · Feb 2026 (Halborn, Protos, Rekt). | This is not hypothetical. In February 2026, this drained ten to eleven million dollars from a Stellar lending pool. |
+| 0:24.5–0:30 | | "Two things were missing: a price one trade can't move, and how much could really be sold." | Two things were missing: a price one trade can't move, and how much could really be sold. |
+| 0:30–0:33 | **Idea** | "A sealed auction daily*; its result becomes the oracle." Under it, small: "*For the sake of the demo, our testnet implementation runs auctions every 10 minutes." | Fathom runs a sealed auction daily, and its result becomes the oracle. |
+| 0:33–0:37 | | 1 · Sealed: nobody can trade against you. | Bids are sealed, so nobody can trade against you. |
+| 0:37–0:41 | | 2 · One price: everyone fills at the same price. | Everyone fills at one clearing price. |
+| 0:41–0:45 | | 3 · Depth: "Buy orders left unfilled, locked 7 days. Self-trading can only lower it." | And depth: buy orders left unfilled, locked for seven days. Self-trading can only lower it. |
+| 0:45–0:50 | | "Price + depth, read by any lender via SEP-40". | Price and depth, read by any lender through SEP-40. Let's see it live, on testnet, where each auction takes ten minutes. |
+| 0:50–0:52 | **Live · A** | Card: "A buyer places a sealed bid". | |
+| 0:52–1:17 | | Zoom on the trade widget, then the seal modal: buy 20,000 USTRY at most $1.040; proof; confidential keys; wrap; deposit proved; "Sealed bid locked in auction #29". | A buyer bids for twenty thousand USTRY at up to a dollar four. The bid is sealed in the browser with a zero-knowledge proof. One signature creates confidential keys, the USDC is wrapped into a confidential token, and the deposit is proved without showing the amount. The bid is locked in auction twenty-nine. |
+| 1:17–1:19 | **Live · B** | Card: "The auction closes: one price for everyone". | |
+| 1:19–1:30 | | "Auction #29 closed"; zoom on the clearing price ("Everyone trades at $1.05") and the curves; then the table of revealed bids. | Auction twenty-nine closes. Every bid is revealed and checked, and everyone trades at a dollar five. |
+| 1:30–1:32 | **Live · C** | Card: "Fathom publishes price and depth". | |
+| 1:32–1:48 | | Zoom on each number: price $1.04 (median of the last 7 auctions); depth 55,262 USTRY; Pool B cap 17,631 USTRY; then the cap meter. Caption: "Pool B accepts at most 50% of the lowest recent depth." | Fathom publishes the price, the median of the last seven auctions: a dollar four. Depth: fifty-five thousand USTRY of buy orders left unfilled, locked for seven days. And Pool B accepts at most half of the lowest recent depth. |
+| 1:48–1:50 | **Live · D** | Card: "The February attack, replayed". | |
+| 1:50–2:15 | | One trade pumps the DEX to $106. Both pools are asked for $1,000,000. Pool A: 13,000 × $106 = $1,378,000, lends $1,000,000, drained. Pool B: 13,000 × $1.04 = $13,520, "Borrow rejected", depth cap 17,631; its stellar.expert transaction. End: Pool A $0 · Pool B $1M. "Same attack. Only the price source differs." | Now the February attack, replayed. One trade pumps the DEX to a hundred and six. The attacker asks both pools for a million. Pool A uses the DEX price and is drained. Pool B uses Fathom: the same collateral is worth thirteen and a half thousand dollars, so the borrow is rejected, on-chain. Same attack. Only the price source differs. |
+| 2:15–2:21 | **Recap** | ✓ A price one trade can't move · ✓ Depth that can't be faked · ✓ Privacy by sealed orders and confidential tokens. | A price one trade can't move. Depth that can't be faked. And privacy, from sealed orders and confidential tokens. |
+| 2:21–2:30 | | Fathom logo · fathom-b3t.pages.dev · github.com/celadari/fathom-hack-meridian-2026. | That's Fathom. Try it live, and read the code on GitHub. |
 
-## Hook · 0:00–0:10 (≈ 22 words)
-
-This is Fathom. A price you can lend against, and the depth to prove it. Built on Stellar, for
-real-world-asset tokens.
-
-## Problem · 0:10–0:35 (≈ 56 words)
-
-Lending pools need a price for tokenized assets like USTRY. Usually that price is the last trade on a
-thin DEX. Here, one trade moves it from a dollar four to a hundred and six dollars, on a market with
-under a dollar of hourly volume. In February 2026, exactly this drained ten to eleven million dollars
-from a Stellar lending pool.
-
-## Solution · 0:35–1:00 (≈ 55 words)
-
-Fathom fixes the price source. Every few minutes it runs a sealed auction. You seal your order in your
-browser: price and size stay hidden while orders come in. At the close, everyone fills at one price.
-Then Fathom publishes that price, and the depth behind it, through SEP-40, the oracle standard Stellar
-lenders already read.
-
-## Demo · 1:00–2:15 (≈ 165 words)
-
-Here's the live app on testnet. I place a sealed buy order. My browser seals it and checks a
-zero-knowledge proof that it's valid and paid for. One signature creates my confidential keys, my USDC
-is wrapped into a confidential token, and the deposit is proved, so its amount stays hidden. The sealed
-order is locked on Stellar.
-
-On the auction page, sealed orders show up without prices, and depth counts the buy orders locked near
-NAV. As presenter, I end the auction now. In the results, everyone trades at one dollar four.
-
-Fathom then publishes three things lenders need: the price, the median of seven auctions; how much
-USTRY can really be sold near NAV; and how much more Pool B can safely accept.
-
-Now the February attack, replayed. One trade pumps the DEX to a hundred and six dollars. The attacker
-asks two pools for a million dollars each. Pool A trusts the DEX price, and is drained. Pool B uses
-Fathom, and rejects the loan.
-
-## Close · 2:15–2:30 (≈ 33 words)
-
-Fathom is built with Soroban, Noir and OpenZeppelin confidential tokens, and speaks SEP-40. Try it live
-at fathom-b3t dot pages dot dev. The code is on GitHub. Thanks, from HackMeridian 2026.
+From 0:02.5, a thin bar at the top shows the chapter: Problem · Idea · Live · Recap. Scenes are joined by a short
+dip to white, so no text from one scene is visible in the next.
