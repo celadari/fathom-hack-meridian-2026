@@ -70,7 +70,8 @@ Two things were missing:
 **Fathom runs a sealed-bid auction for the asset every few minutes, and publishes its result as an
 oracle.**
 
-- Orders are **sealed**: price and quantity stay hidden until the close, so nobody can trade against
+- Orders are **sealed**: price and quantity stay hidden while orders are being placed (until each
+  order's reveal, after the order window has closed), so nobody can trade against
   them or front-run them. By default the deposit amount is hidden too (confidential tokens).
 - Everyone fills at **one uniform price**, the one where the most can trade.
 - The oracle publishes a **price**: the median of the last 7 clearing prices, capped at NAV, and only
@@ -280,13 +281,14 @@ cd app && DEMO_PROXY_TARGET=http://127.0.0.1:8787 npm run dev
 ```bash
 cargo test                       # contracts (41)
 cd app && npm test               # app unit tests (11): commitment parity, tx retry
-node tools/e2e.mjs               # full browser-driven run on testnet; logs every stellar.expert link
+DEMO_TOKEN=<token> node tools/e2e.mjs   # full browser-driven run on testnet (presenter token); logs every tx link
 ../circuits/build.sh             # Noir circuit: test, prove the example, write the verification key
 ```
 
 **Deploying the hosted demo** (VM, tunnel, Worker, Pages) is described in [infra/README.md](infra/README.md).
 The presenter controls (seed bots, next auction, run the attack live) appear only with
-`?demo=<token>`; visitors never see them.
+`?demo=<token>` (with it, also the demo burner wallet and the verifier panel); a bare `?demo` does
+nothing, and visitors never see them.
 
 ## Reference
 
@@ -416,40 +418,61 @@ More in [docs/testnet-run.md](docs/testnet-run.md).
 
 ### Honest limits
 
-- **Visible on-chain:** each order's **side** (cUSDC deposit = buy, cUSTRY = sell). Price, quantity and
-  (by default) the deposit amount are hidden until the reveal; amounts become public at the reveal and
-  close. Wrapping public tokens into the confidential token is public (its amount shows), so wrap a round
-  float ahead of time, not each order.
-- **The demo settlement server can see amounts.** The auction cannot make proofs (that needs its spending
-  key, and a contract cannot keep a secret), so the server holds the auction's key: it decrypts deposits
-  sent to the auction as they arrive and proves every payout. It cannot send funds anywhere but to the
-  order's owner, for the amount the close recorded: the contract checks each payout's opening. If it stops,
-  payouts wait and resume.
+What this demo does **not** protect, or does not do yet.
+
+**Privacy**
+
+- **Visible from the start:** each order's **side** (cUSDC deposit = buy, cUSTRY = sell), the owner's
+  address and when the order was placed.
+- **Price, quantity and deposit amount become public at the reveal**, which happens after the order window
+  for that auction has closed (so nobody can still place an order against them), but before the close.
+- **Wrapping is public and the app wraps exactly what is missing.** The first time an order needs
+  confidential tokens, the app wraps exactly the shortfall, so that wrap transaction shows the deposit
+  amount. Later orders paid from an existing confidential balance do not.
+- **The demo settlement server can see deposit amounts.** The auction cannot make proofs itself (that needs
+  its spending key, and a contract cannot keep a secret), so the server holds the auction's key: it can
+  decrypt every deposit sent to the auction as it arrives.
 - **Confidential-token proofs are not zero-knowledge yet.** They are UltraHonk proofs in the non-ZK flavour,
   verified on-chain by OpenZeppelin's verifier (on rs-soroban-ultrahonk); OpenZeppelin: "a proof is a
   deterministic function of the witness and carries no such guarantee". Amounts sit in Pedersen
   commitments; full amount privacy needs Soroban's zero-knowledge verifier.
-- **Zero-knowledge proof is checked in the browser, not on-chain.** Each order gets a zero-knowledge
-  UltraHonk proof (`circuits/order`, Noir 1.0.0-beta.9, bb.js 0.87.0, ~1.2 s in a Web Worker) that it is on
-  the price grid and funded; it is verified in the browser before the order is sent, and never posted. The
-  only Soroban verifier available ([rs-soroban-ultrahonk](https://github.com/NethermindEth/rs-soroban-ultrahonk))
-  accepts *non*-ZK proofs, which can leak the order. So on-chain verification runs only in the **Verifier
-  demo** panel (`?verifier` or `?demo`, on How it works) for a fixed dummy order: verified on testnet in
-  [f13a8853…](https://stellar.expert/explorer/testnet/tx/f13a88532ec27f35820c29ff52c92bb84d720bb4e7e4387d27250c569701d87a).
-  A tampered proof (one bit of the public deposit flipped) is rejected by the same contract; the panel runs
-  that check as a **simulation** (the contract's verification code on Soroban, labelled as such), because a
-  rejected verification is not recorded on-chain. The contract checks funding again at reveal.
-- **Demo feeds.** The USTRY NAV ($1.06) comes from `mock-nav` and the DEX price from `mock-dex-price`, both
-  set by us and tagged so in the app.
-- **Blend integration goes through the oracle-aggregator.** Blend pools read prices through an
-  aggregator such as [blend-capital/oracle-aggregator](https://github.com/blend-capital/oracle-aggregator),
-  which needs a SEP-40 source with `last_timestamp`, `price(asset, timestamp)`, `resolution` and `decimals`
-  (Fathom has all four). Two caveats: the aggregator only passes on the **price**, not depth (the depth cap
-  is Pool B's own logic), and it rejects prices older than its `max_age` (6–60 min), so daily auctions would
-  need the price republished each hour or auctions at least hourly. Nothing here is integrated with a real
-  Blend pool.
-- **Bait-and-switch window is short in the demo:** pools use the lowest depth over 30 minutes (production:
-  weeks), so depth added just before a demo does not count yet.
+- **The order's own zero-knowledge proof is checked in the browser, not on-chain.** Each order gets a
+  zero-knowledge UltraHonk proof (`circuits/order`, Noir 1.0.0-beta.9, ~1.2 s in a Web Worker) that it is
+  on the price grid and funded; it is verified in the browser and never posted, because the only Soroban
+  verifier accepts non-ZK proofs, which can leak the order. The contract re-checks funding at reveal.
+  On-chain verification runs only in the **Verifier demo** panel (How it works, with `?verifier`) for a fixed
+  dummy order: [f13a8853…](https://stellar.expert/explorer/testnet/tx/f13a88532ec27f35820c29ff52c92bb84d720bb4e7e4387d27250c569701d87a).
+  Its "tampered proof" check is a simulation, because a rejected verification is not recorded on-chain.
+- **Auditor.** OpenZeppelin's confidential token encrypts every amount to an auditor key as well. Here that key
+  was generated and its secret discarded, so nobody can use it; a production deployment would have a real
+  auditor who can read amounts.
+
+**Funds and trust**
+
+- **Payouts go only to order owners, for the recorded amount.** The contract checks each payout's opening
+  against what the close recorded and sends it to the order's owner; the token takes the recipient's key
+  from chain state, so the server cannot redirect or misencrypt a payout. It can delay payouts: if it stops,
+  they wait and resume when it restarts.
+- **An unrevealed confidential deposit is not refunded automatically.** Its refund (minus the 1% penalty)
+  needs the deposit's opening. The server has it only for the bots' orders; for your order it is saved in
+  your browser, but the app has no button to submit it yet (`open_deposit`). Keep the tab open in the
+  reveal window, which reveals automatically.
+- **No unwrap in the app.** Payouts arrive as cUSDC / cUSTRY; turning them back into public USDC / USTRY
+  (the token's `withdraw`, with a proof) is not in the app yet.
+- **Admin powers.** The auction runs with `demo: true`, so its admin can end the order or reveal window early
+  (`fast_forward`, the presenter's "Next auction") and change parameters.
+- **Testnet demo, not audited.** Demo tokens from our own issuer; the USTRY NAV ($1.06) and the DEX price are
+  feeds we set (`mock-nav`, `mock-dex-price`), tagged in the app.
+
+**Integration**
+
+- **Blend reads prices through the oracle-aggregator.** [blend-capital/oracle-aggregator](https://github.com/blend-capital/oracle-aggregator)
+  calls `price(asset, timestamp)`, `last_timestamp`, `resolution` and `decimals` on its source (Fathom has
+  all four). It passes on **price only, not depth** (the depth cap is Pool B's own logic), and it ignores
+  prices older than its `max_age` (360–3600 s), so daily auctions would need the price republished at least
+  hourly. Nothing here is integrated with a real Blend pool.
+- **Bait-and-switch window is short in the demo:** Pool B uses the lowest depth over 30 minutes
+  (production: weeks), so depth added just before a demo does not count yet.
 - **Sybil / wash resistance** relies on locked, non-cancellable standing bids; bonded membership and
   nullifiers are not implemented.
 

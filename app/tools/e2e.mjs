@@ -3,7 +3,7 @@
 // close banner → results → dashboard → attack replay. Logs every stellar.expert link.
 //
 //   (app dev server and scripts demo server running)
-//   node tools/e2e.mjs
+//   DEMO_TOKEN=<token> node tools/e2e.mjs   (hosted demo server; a local one needs no token)
 import { writeFileSync } from "node:fs";
 import { chromium } from "playwright";
 
@@ -37,7 +37,8 @@ const openLog = async () => {
 
 try {
   log("open the auction room with ?demo");
-  await page.goto(`${APP}/?demo`, { waitUntil: "networkidle" });
+  // Presenter mode: the hosted demo server needs its token (DEMO_TOKEN); a local one needs none.
+  await page.goto(`${APP}/?demo${process.env.DEMO_TOKEN ? `=${process.env.DEMO_TOKEN}` : ""}`, { waitUntil: "networkidle" });
   await page.waitForFunction(() => !document.querySelector('[aria-busy="true"]'), null, { timeout: 30_000 });
 
   log("connect the demo wallet");

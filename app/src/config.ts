@@ -66,7 +66,8 @@ function flag(name: string): boolean {
   }
 }
 
-/** ?demo: demo controls (Next auction, Seed bots, Run replay) and the demo wallet. */
+/** ?demo=<token>: presenter mode (demo bar, demo burner wallet, live attack). Without a valid token
+ * (or a local demo server that needs none) it shows nothing: see usePresenter in demo/api.ts. */
 export const DEMO = flag("demo");
 
 /** Demo server base URL: "/demo" through the Vite proxy locally, the hosted server in production. */
@@ -83,8 +84,8 @@ export function demoToken(): string {
     return fromUrl ?? "";
   }
 }
-/** ?verifier (or ?demo): show the on-chain verifier demo panel (dummy order only). */
-export const VERIFIER_DEMO = flag("verifier") || DEMO;
+/** ?verifier: show the on-chain verifier demo panel (dummy order only); presenters see it too. */
+export const VERIFIER_DEMO = flag("verifier");
 /** ?mock: render mock data (screenshot comparison with the designs). */
 export const MOCK = flag("mock");
 

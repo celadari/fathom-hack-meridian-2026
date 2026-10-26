@@ -2,7 +2,8 @@
 // search bar replaced by an asset switcher, a network pill and the wallet button.
 import { useState, type CSSProperties, type ReactNode } from "react";
 import { Link, NavLink } from "react-router";
-import { DEMO, NET, shortAddr } from "../config";
+import { NET, shortAddr } from "../config";
+import { usePresenter } from "../demo/api";
 import { useFathom } from "../data/useFathom";
 import { useWallet } from "../stellar/wallet";
 
@@ -48,13 +49,14 @@ const menuItem: CSSProperties = { textAlign: "left", background: "none", border:
 
 function WalletButton() {
   const w = useWallet();
+  const presenter = usePresenter(); // the demo burner wallet is a presenter tool
   const [open, setOpen] = useState(false);
   const label = w.address ? shortAddr(w.address) : w.status === "connecting" ? "Connecting…" : "Connect";
   return (
     <div style={{ position: "relative" }}>
       <button
         type="button"
-        onClick={() => (w.address || DEMO ? setOpen(!open) : void w.connect("freighter"))}
+        onClick={() => (w.address || presenter ? setOpen(!open) : void w.connect("freighter"))}
         aria-expanded={open}
         style={{ ...pillBtn, ...(w.wrongNetwork ? { background: "#FDECEC", color: "#D93A3A" } : {}), fontVariantNumeric: "tabular-nums" }}
       >
@@ -72,7 +74,7 @@ function WalletButton() {
           ) : (
             <>
               <button type="button" role="menuitem" style={menuItem} onClick={() => { void w.connect("freighter"); setOpen(false); }}>Freighter</button>
-              {DEMO && <button type="button" role="menuitem" style={menuItem} onClick={() => { void w.connect("burner"); setOpen(false); }}>Demo wallet (testnet burner)</button>}
+              {presenter && <button type="button" role="menuitem" style={menuItem} onClick={() => { void w.connect("burner"); setOpen(false); }}>Demo wallet (testnet burner)</button>}
             </>
           )}
         </div>

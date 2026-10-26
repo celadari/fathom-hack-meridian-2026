@@ -6,6 +6,7 @@ import { Header, Page } from "../components/Header";
 import { PageIntro } from "../components/PageIntro";
 import { CONFIDENTIAL, VERIFIER_DEMO } from "../config";
 import { VerifierDemo } from "../zk/VerifierDemo";
+import { usePresenter } from "../demo/api";
 import { useFathom } from "../data/useFathom";
 import { fmtK } from "../lib/format";
 
@@ -76,6 +77,7 @@ function Walkthrough({ steps }: { steps: WalkStep[] }) {
 }
 
 export function HowItWorks() {
+  const presenter = usePresenter();
   // Rules quoted in the copy come from the contracts (auction params, oracle params).
   const { auction, liquidity } = useFathom();
   const a = auction.status === "ready" ? auction.data : null;
@@ -216,7 +218,7 @@ export function HowItWorks() {
           </ul>
         </section>
 
-        {VERIFIER_DEMO && <VerifierDemo />}
+        {(VERIFIER_DEMO || presenter) && <VerifierDemo />}
       </main>
     </Page>
   );

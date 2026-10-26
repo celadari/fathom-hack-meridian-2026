@@ -11,7 +11,8 @@ import { SealModal, type SealState } from "../components/SealModal";
 import { TradeBackdrop } from "../components/TradeBackdrop";
 import { NAV_TITLE, SetByUs } from "../components/SetByUs";
 import { Slice } from "../components/State";
-import { CONFIDENTIAL, DEMO, UNIT } from "../config";
+import { CONFIDENTIAL, UNIT } from "../config";
+import { usePresenter } from "../demo/api";
 import type { AuctionView } from "../data/types";
 import { useFathom } from "../data/useFathom";
 import { fmtCountdown, fmtInt, fmtUsd } from "../lib/format";
@@ -49,7 +50,7 @@ export function Trade() {
         center
         title="Trade"
         what="Place a sealed buy or sell order for USTRY."
-        why="Your price and size stay hidden until the auction closes, so nobody can trade against you; then everyone fills at one price."
+        why="Your price and size stay hidden while orders are being placed, so nobody can trade against you; then everyone fills at one price."
       />
       <Slice of={auction} label="the auction" minHeight={400}>{(a) => <TradeWidget a={a} />}</Slice>
       </div>
@@ -61,6 +62,7 @@ export function Trade() {
 function TradeWidget({ a }: { a: AuctionView }) {
   const { source } = useFathom();
   const wallet = useWallet();
+  const presenter = usePresenter();
   const account = useAccount();
   const { seal } = useMyOrders();
   const now = useNow();
@@ -104,7 +106,7 @@ function TradeWidget({ a }: { a: AuctionView }) {
       setProgress({ text, lock: `${fmtInt(deposit ?? 0)} ${lockTok} locked · price and quantity hidden`, p: { step: "locked", fingerprint: "0x1f9a…c3e2", link: "#", orderId: "mock", proofMs: 1800 }, stages: [] });
       return setOpen(true);
     }
-    if (!wallet.address) return void wallet.connect(DEMO && wallet.freighterInstalled === false ? "burner" : "freighter");
+    if (!wallet.address) return void wallet.connect(presenter && wallet.freighterInstalled === false ? "burner" : "freighter");
     if (busy) return setOpen(true);
     if (block || !deposit) return;
     const lock = CONFIDENTIAL
@@ -189,7 +191,7 @@ function TradeWidget({ a }: { a: AuctionView }) {
                 </button>
               ) : "One auction"}
             </Row>
-            <Row k="Hidden until the close">Price, quantity{CONFIDENTIAL ? ", deposit amount" : ""}</Row>
+            <Row k="Hidden until your reveal">Price, quantity{CONFIDENTIAL ? ", deposit amount" : ""} (orders for this auction are closed by then)</Row>
             <Row k="Public">{CONFIDENTIAL ? "Side (buy or sell)" : "Side and deposit size"}</Row>
             {CONFIDENTIAL && <Row k="Deposit">Confidential token. The demo settlement server can see amounts; proofs aren't zero-knowledge until Soroban's verifier supports it.</Row>}
             <Row k="If not revealed">{a.penaltyPct}% of the deposit is kept; your tab reveals automatically</Row>
