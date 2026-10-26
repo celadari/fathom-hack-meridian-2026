@@ -12,7 +12,8 @@
     "demo-server": "tsx demo-server.ts"
   },
   "dependencies": {
-    "@stellar/stellar-sdk": "17.4.0"
+    "@stellar/stellar-sdk": "17.4.0",
+    "stellar-confidential-token-sdk": "github:brozorec/stellar-confidential-token-sdk#aad17069714713bcb36fa376d0f2a87743e8e2a7"
   },
   "devDependencies": {
     "@types/node": "24.19.2",

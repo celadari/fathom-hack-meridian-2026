@@ -10,7 +10,7 @@ import { Header, Page } from "../components/Header";
 import { MyOrdersPanel } from "../components/MyOrdersPanel";
 import { NAV_TITLE, SetByUs } from "../components/SetByUs";
 import { Slice } from "../components/State";
-import { DEMO, UNIT } from "../config";
+import { DEMO, UNIT, CONFIDENTIAL } from "../config";
 import type { AuctionView } from "../data/types";
 import { useFathom } from "../data/useFathom";
 import { fmtCountdown, fmtInt, fmtK, fmtPct, fmtTime, fmtUsd } from "../lib/format";
@@ -65,7 +65,8 @@ function AuctionRoom({ a }: { a: AuctionView }) {
   const tick = Math.round((limit - a.grid.min) / a.grid.tick);
   const onGrid = tick >= 0 && tick < a.grid.ticks && Math.abs(a.grid.min + tick * a.grid.tick - limit) < 1e-9;
   const needed = buy ? qty * limit : qty;
-  const deposit = a.depositSizes.find((s) => s >= needed);
+  // Confidential deposits take any amount (exactly what the order needs); otherwise a fixed size.
+  const deposit = CONFIDENTIAL ? (needed > 0 ? Math.ceil(needed) : undefined) : a.depositSizes.find((s) => s >= needed);
   const lockTok = buy ? a.quote : a.base;
   const isStanding = buy && standing;
   const balance = account.status?.balances[buy ? "USDC" : "USTRY"] ?? 0;
@@ -81,7 +82,7 @@ function AuctionRoom({ a }: { a: AuctionView }) {
   else if (!onGrid) block = `Price must be on the $${a.grid.tick.toFixed(2)} grid`;
   else if (!deposit) block = `Above the largest deposit (${fmtInt(a.depositSizes[a.depositSizes.length - 1])})`;
   else if (!account.status) block = account.error ? "Could not read your balance" : "Checking your balance…";
-  else if (balance < deposit) block = `Not enough ${lockTok} (you have ${fmtInt(balance)})`;
+  else if (!CONFIDENTIAL && balance < deposit) block = `Not enough ${lockTok} (you have ${fmtInt(balance)})`; // confidential: checked against the confidential balance while sealing
 
   const onSeal = () => {
     if (source === "mock") {
@@ -93,7 +94,9 @@ function AuctionRoom({ a }: { a: AuctionView }) {
     if (progress && !busy) return setProgress(null);
     if (block || !deposit) return;
     const text = `${buy ? "Buy" : "Sell"} ${fmtInt(qty)}`;
-    const lock = `${fmtInt(deposit)} ${lockTok} locked${isStanding ? ` for ${a.standingDays} days` : ""} · price and quantity hidden`;
+    const lock = CONFIDENTIAL
+      ? `Confidential ${lockTok} deposit locked${isStanding ? ` for ${a.standingDays} days` : ""} · price and quantity hidden`
+      : `${fmtInt(deposit)} ${lockTok} locked${isStanding ? ` for ${a.standingDays} days` : ""} · price and quantity hidden`;
     setProgress({ text, lock, p: { step: "sealing" } });
     void seal(
       {
@@ -154,7 +157,8 @@ function AuctionRoom({ a }: { a: AuctionView }) {
             <span style={{ background: "#F9F9F9", border: "1px solid #F0F0F0", borderRadius: "20px", padding: "6px 12px", fontWeight: 535 }}>{lockTok}</span>
           </div>
           <span style={{ color: "#7D7D7D", fontSize: "14px" }}>
-            {deposit ? "Price and quantity hidden until the close · " : `Above the largest deposit (${fmtInt(a.depositSizes[a.depositSizes.length - 1])}) · `}
+            {CONFIDENTIAL && <span style={{ display: "block", marginBottom: "4px" }}>Deposit amount: confidential token. The demo settlement server can see amounts. Proofs aren't zero-knowledge until Soroban's verifier supports it.</span>}
+            {deposit ? "Price and quantity hidden until the close · " : CONFIDENTIAL ? "Enter a quantity and price · " : `Above the largest deposit (${fmtInt(a.depositSizes[a.depositSizes.length - 1])}) · `}
             {buy ? (
               <button type="button" onClick={() => setStanding(!standing)} aria-pressed={standing} style={{ border: "none", background: "none", padding: 0, font: "inherit", color: "inherit", textDecoration: "underline dotted", cursor: "pointer" }}>
                 {standing ? `standing ${a.standingDays} days` : "one auction"}
@@ -166,7 +170,7 @@ function AuctionRoom({ a }: { a: AuctionView }) {
         {!progress && (
           <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", color: "#7D7D7D", fontSize: "14px", padding: "8px 4px" }}>
             <span>Sealed in your browser</span>
-            <span>Side and deposit size are public</span>
+            <span>{CONFIDENTIAL ? "Side is public" : "Side and deposit size are public"}</span>
           </div>
         )}
         {progress && (
@@ -200,7 +204,7 @@ function AuctionRoom({ a }: { a: AuctionView }) {
               <li className="fade" style={{ display: "flex", gap: "8px" }}>
                 <span style={{ color: locked ? "#40B66B" : "#B5B5B5" }}>{locked ? "✓" : "…"}</span>
                 <span>
-                  {locked ? progress.lock : proofMs !== null && p?.step !== "error" ? "Locking funds on Stellar…" : "Funds not locked yet"}
+                  {locked ? progress.lock : p?.step === "proved" && p.detail ? p.detail : proofMs !== null && p?.step !== "error" ? "Locking funds on Stellar…" : "Funds not locked yet"}
                   {p?.step === "locked" && <> · <a href={p.link} target="_blank" rel="noreferrer" style={{ color: "#FC72FF" }}>stellar.expert</a></>}
                 </span>
               </li>

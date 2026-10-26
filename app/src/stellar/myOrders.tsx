@@ -1,7 +1,8 @@
 // The connected account's orders: seal (opening saved before sending), reconcile with
 // the chain, and reveal, automatically while the tab is open in the reveal window.
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { IDS, expertTx } from "../config";
+import { CONFIDENTIAL, IDS, expertTx } from "../config";
+import * as conf from "./confidential";
 import { ledgerNow, onEvents } from "./events";
 import { AUCTION_ERRORS, contractErrorCode, read, send } from "./client";
 import { commitment, hexBytes, newSalt, ownerField, saltBytes } from "./commitment";
@@ -30,7 +31,7 @@ export interface SealRequest {
 export type SealProgress =
   | { step: "sealing" }
   | { step: "sealed"; fingerprint: string }
-  | { step: "proved"; fingerprint: string; proofMs: number }
+  | { step: "proved"; fingerprint: string; proofMs: number; detail?: string }
   | { step: "locked"; fingerprint: string; link: string; orderId: string; proofMs: number }
   | { step: "error"; fingerprint?: string; error: string };
 
@@ -113,9 +114,11 @@ export function MyOrdersProvider({ children }: { children: ReactNode }) {
     attempted.current.add(o.commitment);
     setStored(patchOpening(address, o.commitment, { state: "revealing", error: undefined }));
     try {
-      const { hash } = await send(IDS.auction, "reveal", {
-        owner: address, order_id: BigInt(o.orderId), side: o.side, price_tick: o.priceTick, qty: BigInt(o.qty), salt: saltBytes(BigInt(`0x${o.salt}`)),
-      }, signer);
+      const args = { owner: address, order_id: BigInt(o.orderId), side: o.side, price_tick: o.priceTick, qty: BigInt(o.qty), salt: saltBytes(BigInt(`0x${o.salt}`)) };
+      // A confidential deposit is disclosed now (amount + blinding), checked against its commitment.
+      const { hash } = o.confBlinding
+        ? await send(IDS.auction, "reveal_confidential", { ...args, amount: BigInt(o.deposit), blinding: saltBytes(BigInt(`0x${o.confBlinding}`)) }, signer)
+        : await send(IDS.auction, "reveal", args, signer);
       setStored(patchOpening(address, o.commitment, { state: "revealed", revealTx: hash }));
     } catch (e) {
       setStored(patchOpening(address, o.commitment, { state: "sealed", error: message(e) }));
@@ -166,9 +169,38 @@ export function MyOrdersProvider({ children }: { children: ReactNode }) {
       return;
     }
     try {
-      const { value: id, hash } = await send<bigint>(IDS.auction, "place_order", {
-        owner: address, commitment: hexBytes(c), deposit_token: r.side === 0 ? IDS.usdc : IDS.ustry, deposit_amount: r.deposit, standing: r.standing,
-      }, signer, { writeSlack: 512 });
+      let sent: { value: bigint; hash: string };
+      if (CONFIDENTIAL) {
+        // Confidential deposit of exactly r.deposit: register once, wrap any shortfall (the wrap is
+        // public), then prove a confidential transfer to the auction (non-ZK, in this browser).
+        const side = r.side === 0 ? "buy" : "sell";
+        const step = (detail: string) => onProgress({ step: "proved", fingerprint, proofMs, detail });
+        const st = await conf.confStatus(address);
+        if (!st.registered.usdc || !st.registered.ustry) {
+          step("One-time setup: sign a message for your confidential keys, then register…");
+          await conf.register(signer, step);
+        }
+        step("Checking your confidential balance…");
+        const bal = await conf.spendable(signer, side);
+        if (bal.spendable < r.deposit) {
+          const wrap = r.deposit - bal.spendable - bal.receiving;
+          step(wrap > 0n ? "Wrapping tokens into the confidential token (this amount is public)…" : "Merging received funds…");
+          await conf.wrapAndMerge(signer, side, wrap > 0n ? wrap : 0n);
+        }
+        step("Proving the confidential deposit…");
+        const t = await conf.depositTransfer(signer, side, r.deposit);
+        // Saved before sending, like the salt: without it the deposit could not be revealed.
+        setStored(patchOpening(address, c, { deposit: t.amount.toString(), confBlinding: t.blinding.toString(16).padStart(64, "0") }));
+        step(`Deposit proved (${(t.ms / 1000).toFixed(1)} s) · locking on Stellar…`);
+        sent = await send<bigint>(IDS.auction, "place_order_confidential", {
+          owner: address, commitment: hexBytes(c), side: r.side, standing: r.standing, data: t.data,
+        }, signer, { writeSlack: 512 });
+      } else {
+        sent = await send<bigint>(IDS.auction, "place_order", {
+          owner: address, commitment: hexBytes(c), deposit_token: r.side === 0 ? IDS.usdc : IDS.ustry, deposit_amount: r.deposit, standing: r.standing,
+        }, signer, { writeSlack: 512 });
+      }
+      const { value: id, hash } = sent;
       const placed = await read<RawOrder>(IDS.auction, "order", { id });
       setStored(patchOpening(address, c, { state: "sealed", orderId: id.toString(), auction: placed.auction.toString(), placeTx: hash }));
       onProgress({ step: "locked", fingerprint, link: expertTx(hash), orderId: id.toString(), proofMs });

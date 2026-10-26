@@ -14,6 +14,8 @@ export interface StoredOpening {
   salt: string; // hex
   deposit: string; // base units
   depositToken: "USDC" | "USTRY";
+  /** CONFIDENTIAL: blinding (hex) of the confidential deposit; with `deposit`, its opening, disclosed at reveal. */
+  confBlinding?: string;
   standing: boolean;
   createdAt: number;
   state: OpeningState;

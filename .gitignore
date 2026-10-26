@@ -5,6 +5,7 @@ dist/
 .env.*
 !.env.example
 !app/.env.production
+!app/.env.confidential
 *.secret
 .stellar/
 circuits/**/target/
@@ -14,3 +15,6 @@ test_snapshots/
 *.tsbuildinfo
 circuits/order/target/
 deployments/local.json
+
+# Barretenberg CRS copied in by infra/scripts/build-and-push.sh
+docker/.bb-crs/

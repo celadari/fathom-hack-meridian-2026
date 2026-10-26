@@ -27,6 +27,19 @@ export const IDS = {
 };
 
 /**
+ * CONFIDENTIAL_DEPOSITS (build with `vite --mode confidential`): deposits are confidential
+ * transfers of OpenZeppelin confidential tokens wrapping USDC/USTRY, of any amount.
+ */
+export const CONFIDENTIAL = env.VITE_CONFIDENTIAL_DEPOSITS === "true";
+export const CONF = {
+  usdc: env.VITE_CONF_USDC as string,
+  ustry: env.VITE_CONF_USTRY as string,
+  verifier: env.VITE_CONF_VERIFIER as string,
+  auditor: env.VITE_CONF_AUDITOR as string,
+  fromLedger: Number(env.VITE_CONF_FROM_LEDGER ?? 0),
+};
+
+/**
  * Values we set ourselves in scripts/config.ts (written to app/.env by deploy):
  * the mock DEX feed's reset price and the attack replay's inputs. Shown in the UI
  * as "demo feed (set by us)" / "attack scenario (set by us)", never as measurements.

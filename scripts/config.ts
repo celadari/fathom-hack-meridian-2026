@@ -5,6 +5,14 @@
 // All prices and amounts are 7-decimal fixed point ($1.06 = 10_600_000n).
 
 export const UNIT = 10_000_000n;
+
+/**
+ * CONFIDENTIAL_DEPOSITS=true: deposits go through OpenZeppelin confidential tokens (any amount,
+ * hidden in Pedersen commitments) instead of fixed-size escrow. Off by default. The settlement
+ * server proves every payout (~20 s per proof on the e2-micro, one transaction per ledger), so
+ * auctions run 8 minutes instead of 3. Uses its own deployment (deployments/testnet-confidential.json).
+ */
+export const CONFIDENTIAL = process.env.CONFIDENTIAL_DEPOSITS === "true";
 const usd = (n: number) => BigInt(Math.round(n * 100)) * (UNIT / 100n);
 
 export const CONFIG = {
@@ -19,8 +27,8 @@ export const CONFIG = {
   auction: {
     grid: { min: usd(0.9), max: usd(1.2), tick: usd(0.01) },
     params: {
-      period_secs: 180,
-      reveal_secs: 60,
+      period_secs: CONFIDENTIAL ? 480 : 180,
+      reveal_secs: CONFIDENTIAL ? 120 : 60,
       standing_secs: 7 * 86_400, // standing buy orders last 7 days, no cancel
       depth_floor_bps: 500, // depth counts standing bids at most 5% below NAV
       penalty_bps: 100, // unrevealed orders lose 1% of their deposit
@@ -30,7 +38,7 @@ export const CONFIG = {
   },
 
   oracle: {
-    resolution: 180, // = auction period
+    resolution: CONFIDENTIAL ? 480 : 180, // = auction period
     median_window: 7, // median of the last 7 clearing prices
     min_notional: 10_000n * UNIT, // no price below $10k notional...
     min_orders: 5, // ...or fewer than 5 orders

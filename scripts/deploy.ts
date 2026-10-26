@@ -11,13 +11,15 @@
 // and app/.env (local).
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { readFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { Asset } from "@stellar/stellar-sdk";
-import { CONFIG } from "./config.js";
+import { CIRCUIT_TYPE, H, pointToBytes, randomScalar, scalarMul, toHex32 } from "stellar-confidential-token-sdk";
+import { CONFIDENTIAL, CONFIG } from "./config.js";
+import { AUDITOR_ID, OZ_WASM, registerAuctionData, vk } from "./lib/confidential.js";
 import {
   FRIENDBOT_URL, NETWORK, PASSPHRASE, ROOT, RPC_URL, HORIZON_URL,
-  Deployment, ensureIdentity, ensureTrustlines, loadOrFund, readDeployment, stellar, topUp, writeDeployment,
+  Deployment, ensureIdentity, ensureTrustlines, loadOrFund, readDeployment, server, stellar, topUp, writeDeployment,
 } from "./lib/stellar.js";
 
 const wasm = (name: string) => resolve(ROOT, `target/wasm32v1-none/release/${name}.wasm`);
@@ -30,14 +32,15 @@ const flags = (args: Record<string, unknown>) =>
 /** Deploy `file` under `key` unless the same code was already deployed with the same args. */
 function ensureContract(d: Deployment, key: string, file: string, args: Record<string, unknown>) {
   const ctor = flags(args);
-  const wasmHash = createHash("sha256").update(readFileSync(wasm(file))).digest("hex");
+  const path = file.endsWith(".wasm") ? file : wasm(file);
+  const wasmHash = createHash("sha256").update(readFileSync(path)).digest("hex");
   const fingerprint = createHash("sha256").update(wasmHash + json(ctor)).digest("hex").slice(0, 16);
   if (d[key] && d[`${key}_fp`] === fingerprint) {
     console.log(`  ${key} unchanged`);
     return;
   }
   console.log(`  deploying ${key}`);
-  const out = stellar("contract", "deploy", "--wasm", wasm(file), "--source", "fathom-admin", ...net, "--alias", key, "--", ...ctor);
+  const out = stellar("contract", "deploy", "--wasm", path, "--source", "fathom-admin", ...net, "--alias", key, "--", ...ctor);
   d[key] = out.split("\n").pop()!;
   d[`${key}_fp`] = fingerprint;
 }
@@ -120,6 +123,7 @@ async function main() {
   }
   fundContract(d.usdc_sac, d.pool_a, d.admin, tvl);
   fundContract(d.usdc_sac, d.pool_b, d.admin, tvl);
+  if (CONFIDENTIAL) await setupConfidential(d);
 
   // Public values only (contract ids, network, scenario). app/.env is local; app/.env.production
   // is committed so a hosted build (Vercel) needs no extra setup.
@@ -149,13 +153,71 @@ async function main() {
       ...extra,
       "",
     ].join("\n");
-  writeFileSync(resolve(ROOT, "app/.env"), env([]));
-  // The hosted demo server (fly.toml). Override with FATHOM_DEMO_API when deploying elsewhere.
-  // Hosted builds are testnet only; infra/scripts/deploy-frontend.sh sets VITE_DEMO_API for Cloudflare Pages.
-  if (NETWORK === "testnet") writeFileSync(resolve(ROOT, "app/.env.production"), env([]));
+  if (CONFIDENTIAL) {
+    // Its own Vite mode (vite --mode confidential): the default app env files keep the fixed-size stack.
+    writeFileSync(resolve(ROOT, "app/.env.confidential"), env([
+      "# CONFIDENTIAL_DEPOSITS stack (OpenZeppelin confidential tokens).",
+      "VITE_CONFIDENTIAL_DEPOSITS=true",
+      `VITE_CONF_USDC=${d.conf_usdc}`,
+      `VITE_CONF_USTRY=${d.conf_ustry}`,
+      `VITE_CONF_VERIFIER=${d.conf_verifier}`,
+      `VITE_CONF_AUDITOR=${d.conf_auditor}`,
+      `VITE_CONF_FROM_LEDGER=${d.conf_from_ledger}`,
+    ]));
+  } else {
+    writeFileSync(resolve(ROOT, "app/.env"), env([]));
+    // Hosted builds are testnet only; infra/scripts/deploy-frontend.sh sets VITE_DEMO_API for Cloudflare Pages.
+    if (NETWORK === "testnet") writeFileSync(resolve(ROOT, "app/.env.production"), env([]));
+  }
 
   console.log("\nDeployed:");
   console.table(Object.fromEntries(Object.entries(d).filter(([k]) => !k.endsWith("_fp"))));
+}
+
+/**
+ * CONFIDENTIAL_DEPOSITS: OpenZeppelin verifier (+ the six circuit VKs), auditor (+ key 0), one
+ * confidential token per demo asset, then the auction: flag on, registered as a confidential
+ * account on both tokens with its spending key (FATHOM_CONF_AUCTION_SK, created here if missing).
+ */
+async function setupConfidential(d: Deployment) {
+  console.log("6. confidential tokens (OpenZeppelin stellar-confidential 0.8.0)");
+  if (!process.env.FATHOM_CONF_AUCTION_SK) {
+    const sk = toHex32(randomScalar()).replace(/^0x/, "");
+    appendFileSync(resolve(ROOT, ".env.local"), `\n# Auction's confidential spending key (settlement server only)\nFATHOM_CONF_AUCTION_SK=${sk}\n`);
+    process.env.FATHOM_CONF_AUCTION_SK = sk;
+    console.log("  new auction spending key → .env.local (add it to Secret Manager for the VM)");
+  }
+  const before = d.conf_verifier;
+  ensureContract(d, "conf_verifier", OZ_WASM.verifier, { admin: d.admin, manager: d.admin });
+  if (d.conf_verifier !== before || !d.conf_vks) {
+    for (const [name, type] of Object.entries(CIRCUIT_TYPE)) {
+      const file = name.replace(/([a-z])([A-Z])/g, "$1_$2").toLowerCase();
+      invoke(d.conf_verifier, "register_verification_key", { circuit_type: type, verification_key: vk(file).toString("hex"), operator: d.admin });
+      console.log(`  verifier: VK ${file}`);
+    }
+    d.conf_vks = "registered";
+  }
+  const auditorBefore = d.conf_auditor;
+  ensureContract(d, "conf_auditor", OZ_WASM.auditor, { admin: d.admin, manager: d.admin });
+  if (d.conf_auditor !== auditorBefore || !d.conf_auditor_key) {
+    // The auditor key decrypts every amount; for this demo nobody keeps its secret.
+    const point = Buffer.from(pointToBytes(scalarMul(randomScalar(), H))).toString("hex");
+    invoke(d.conf_auditor, "register_key", { auditor_id: AUDITOR_ID, point, operator: d.admin });
+    d.conf_auditor_key = point;
+  }
+  if (!d.conf_from_ledger) d.conf_from_ledger = String((await server.getLatestLedger()).sequence - 1);
+  ensureContract(d, "conf_usdc", OZ_WASM.token, { underlying_asset: d.usdc_sac, verifier: d.conf_verifier, auditor: d.conf_auditor });
+  ensureContract(d, "conf_ustry", OZ_WASM.token, { underlying_asset: d.ustry_sac, verifier: d.conf_verifier, auditor: d.conf_auditor });
+  writeDeployment(d);
+  invoke(d.auction, "set_confidential", { base: d.conf_ustry, quote: d.conf_usdc });
+  for (const token of [d.conf_usdc, d.conf_ustry]) {
+    const data = await registerAuctionData(token, d.auction);
+    if (data) {
+      invoke(d.auction, "register_confidential", { ctoken: token, auditor_id: AUDITOR_ID, data: data.toString("hex") });
+      console.log(`  auction registered on ${token.slice(0, 6)}…`);
+    }
+  }
+  writeDeployment(d);
 }
 
 main().catch((e) => {

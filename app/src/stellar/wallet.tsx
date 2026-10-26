@@ -1,7 +1,7 @@
 // Wallet: Freighter, or (behind ?demo) a testnet-only burner key kept in this browser.
 // The burner exists so the demo can run without an extension and so the full flow can
 // be tested headless; it is labelled everywhere it appears.
-import { getAddress, getNetworkDetails, isAllowed, isConnected, requestAccess, signTransaction, WatchWalletChanges } from "@stellar/freighter-api";
+import { getAddress, getNetworkDetails, isAllowed, isConnected, requestAccess, signMessage, signTransaction, WatchWalletChanges } from "@stellar/freighter-api";
 import { Keypair, TransactionBuilder } from "@stellar/stellar-sdk";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { DEMO, NET } from "../config";
@@ -47,6 +47,12 @@ function burnerSigner(kp: Keypair): Signer {
       tx.sign(kp);
       return { signedTxXdr: tx.toXDR(), signerAddress: kp.publicKey() };
     },
+    // SEP-53: ed25519 over sha256("Stellar Signed Message:\n" + message), what Freighter signs.
+    signMessage: async (message: string) => {
+      const prefixed = new TextEncoder().encode(`Stellar Signed Message:\n${message}`);
+      const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", prefixed));
+      return new Uint8Array(kp.sign(digest as never));
+    },
   };
 }
 
@@ -57,6 +63,12 @@ function freighterSigner(address: string): Signer {
       const r = await signTransaction(xdr, { networkPassphrase: opts?.networkPassphrase ?? NET.passphrase, address });
       if (r.error) throw new Error(`Freighter: ${r.error.message ?? String(r.error)}`);
       return { signedTxXdr: r.signedTxXdr, signerAddress: r.signerAddress };
+    },
+    signMessage: async (message: string) => {
+      const r = await signMessage(message, { networkPassphrase: NET.passphrase, address });
+      if (r.error || !r.signedMessage) throw new Error(`Freighter: ${r.error?.message ?? "message not signed"}`);
+      const sig = r.signedMessage;
+      return typeof sig === "string" ? Uint8Array.from(atob(sig), (c) => c.charCodeAt(0)) : new Uint8Array(sig);
     },
   };
 }

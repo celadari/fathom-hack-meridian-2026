@@ -3,7 +3,7 @@
 // browser; step 2 describes fixed-size deposits instead of a confidential token;
 // the attacker is referred to neutrally.
 import { Header, Page } from "../components/Header";
-import { VERIFIER_DEMO } from "../config";
+import { CONFIDENTIAL, VERIFIER_DEMO } from "../config";
 import { VerifierDemo } from "../zk/VerifierDemo";
 import { useFathom } from "../data/useFathom";
 import { fmtK } from "../lib/format";
@@ -37,7 +37,7 @@ export function HowItWorks() {
       <text className="hash" x="320" y="198" textAnchor="middle" fontSize="13" fill="#7D7D7D">fingerprint 0x1f9a…c3e2 posted on-chain</text>
       <g className="pop" transform="translate(440 60)"><circle cx="45" cy="55" r="40" fill="#EEF9F1" /><path d="M27 56 l12 12 l24 -26" fill="none" stroke="#40B66B" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" /></g>
       </svg>
-      <div style={{ display: 'flex', gap: '12px', alignItems: 'baseline' }}><span style={{ color: '#FC72FF', fontWeight: '600' }}>1</span><div><div style={{ fontWeight: '535', fontSize: '17px' }}>Sealed in your browser</div><div style={{ color: '#7D7D7D', fontSize: '14px' }}>Only a fingerprint goes on-chain, next to your deposit. A zero-knowledge proof, checked in your browser, shows the order is valid and paid for without showing it.</div></div></div>
+      <div style={{ display: 'flex', gap: '12px', alignItems: 'baseline' }}><span style={{ color: '#FC72FF', fontWeight: '600' }}>1</span><div><div style={{ fontWeight: '535', fontSize: '17px' }}>Sealed in your browser</div><div style={{ color: '#7D7D7D', fontSize: '14px' }}>Only a fingerprint goes on-chain, next to your deposit. A zero-knowledge proof, checked in your browser, shows the order is valid and paid for without showing it.{CONFIDENTIAL && " Deposit amount: confidential token (OpenZeppelin confidential tokens; any amount). The demo settlement server can see amounts. Proofs aren't zero-knowledge until Soroban's verifier supports it. Side is public."}</div></div></div>
       </section>
       
       <section aria-label="Step 2, lock funds" style={{ background: '#FFFFFF', border: '1px solid #F0F0F0', borderRadius: '24px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>

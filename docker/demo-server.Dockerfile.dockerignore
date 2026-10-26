@@ -1,6 +1,7 @@
 **
 !scripts/**
 !deployments/**
+!docker/.bb-crs/**
 scripts/node_modules
 scripts/.state
 **/.env

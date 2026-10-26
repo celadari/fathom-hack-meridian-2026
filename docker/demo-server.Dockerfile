@@ -6,6 +6,10 @@ COPY --chown=node:node scripts/package.json scripts/package-lock.json ./
 RUN npm ci --no-audit --no-fund && mkdir -p /data && chown node:node /data
 COPY --chown=node:node scripts/ ./
 COPY --chown=node:node deployments/ /app/deployments/
+# Barretenberg CRS for the confidential-token proofs (CONFIDENTIAL_DEPOSITS). bb.js would fetch it
+# from crs.aztec.network, which is IPv4-only; the VM has IPv6 egress only. Copied from the build
+# machine's ~/.bb-crs by infra/scripts/build-and-push.sh.
+COPY --chown=node:node docker/.bb-crs/ /home/node/.bb-crs/
 ENV HOST=0.0.0.0 \
     PORT=8787 \
     DEMO_LOOP=1 \

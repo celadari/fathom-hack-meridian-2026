@@ -8,6 +8,8 @@ import { sendWithRetry, type Sendable } from "../lib/tx";
 export interface Signer {
   address: string;
   signTransaction: (xdr: string, opts?: { networkPassphrase?: string; address?: string }) => Promise<{ signedTxXdr: string; signerAddress?: string }>;
+  /** SEP-53 message signature (64 bytes): the root of the confidential-token keys. */
+  signMessage?: (message: string) => Promise<Uint8Array>;
 }
 
 const specs = new Map<string, Promise<contract.Spec>>();

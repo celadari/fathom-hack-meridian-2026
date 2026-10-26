@@ -5,7 +5,8 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { Asset, Keypair } from "@stellar/stellar-sdk";
-import { CONFIG, UNIT } from "../config.js";
+import { CONFIDENTIAL, CONFIG, UNIT } from "../config.js";
+import { depositTransfer, ensureRegistered, ensureSpendable, payoutTransfer, toBytes32 } from "./confidential.js";
 import { auction, client, newSalt, read, Side, txLink, write } from "./fathom.js";
 import { accountExists, ensureIdentity, ensureTrustlines, readDeployment, ROOT, server, topUp, topUpMany, trustBalance } from "./stellar.js";
 
@@ -16,8 +17,16 @@ const DEPTH_TARGET = 24_800n;
 const STATE_DIR = process.env.FATHOM_STATE_DIR ?? resolve(ROOT, "scripts/.state");
 const OPENINGS = resolve(STATE_DIR, "openings.json");
 const LAST_REPLAY = resolve(STATE_DIR, "last-replay.json");
+/** CONFIDENTIAL: closed auctions whose confidential payouts are not all sent yet (settlement resumes). */
+const PENDING_SETTLE = resolve(STATE_DIR, "pending-settle.json");
+/** CONFIDENTIAL: public units each bot wraps into a confidential token when its balance runs low. */
+const CONF_WRAP = 200_000n * UNIT;
 
-type Opening = { bot: string; auction: string; side: Side; price_tick: number; qty: string; salt: string; revealed?: boolean };
+type Opening = {
+  bot: string; auction: string; side: Side; price_tick: number; qty: string; salt: string; revealed?: boolean;
+  /** CONFIDENTIAL: the deposit's opening (amount, blinding hex), disclosed at reveal. */
+  amount?: string; blinding?: string;
+};
 type Openings = Record<string, Opening>; // by order id
 
 export type Step = { label: string; hash?: string; link?: string };
@@ -34,9 +43,14 @@ function save(file: string, v: unknown) {
 const d = () => readDeployment();
 const assets = () => ({ ustry: new Asset("USTRY", d().issuer), usdc: new Asset("USDC", d().issuer) });
 const admin = () => ensureIdentity("fathom-admin");
+/**
+ * Source account for permissionless calls (close, settle, payouts). With CONFIDENTIAL its own
+ * account, so a confidential stack and the fixed-size one never collide on a sequence number.
+ */
+const operator = () => (CONFIDENTIAL ? ensureIdentity("fathom-settler") : admin());
 
 export function botKey(name: string): Keypair {
-  return ensureIdentity(`fathom-bot-${name}`);
+  return ensureIdentity(CONFIDENTIAL ? `fathom-cbot-${name}` : `fathom-bot-${name}`);
 }
 
 /** Public addresses of the bots, for naming participants in the UI. */
@@ -105,8 +119,10 @@ export async function seed(log: (s: string) => void = () => {}): Promise<Step[]>
   }
 
   const steps: Step[] = [];
-  await Promise.all(
-    plan.filter((p) => p.qty > 0).map(async (p) => {
+  // Confidential deposits need a proof each, made one at a time: seal sequentially.
+  const each = async <T,>(xs: T[], f: (x: T) => Promise<void>) => (CONFIDENTIAL ? xs.reduce((a, x) => a.then(() => f(x)), Promise.resolve()) : Promise.all(xs.map(f)).then(() => undefined));
+  await each(
+    plan.filter((p) => p.qty > 0), async (p) => {
       const kp = botKey(p.bot);
       const c = await auction(kp);
       let hash = "";
@@ -115,23 +131,42 @@ export async function seed(log: (s: string) => void = () => {}): Promise<Step[]>
       const salt = newSalt();
       const opening = { owner: kp.publicKey(), side: p.side, price_tick, qty, salt };
       const commitment = await read<Buffer>(c, "commitment_of", opening);
-      const token = p.side === Side.Buy ? d().usdc_sac : d().ustry_sac;
-      const deposit_amount = depositFor(p.side, price_tick, qty);
-      // Save the opening before sending: without it the order can never be revealed (1% penalty).
       const key = `pending:${Buffer.from(commitment).toString("hex")}`;
-      openings[key] = { bot: p.bot, auction: "", side: p.side, price_tick, qty: qty.toString(), salt: salt.toString("hex") };
-      save(OPENINGS, openings);
-      const { value: id } = await write<bigint>(c, "place_order", {
-        owner: kp.publicKey(), commitment, deposit_token: token, deposit_amount, standing: p.standing,
-      }, { writeSlack: 512 }).then((r) => ((hash = r.hash), r));
+      let id: bigint;
+      let conf: { amount?: string; blinding?: string } = {};
+      if (CONFIDENTIAL) {
+        // Any amount: exactly what the order needs. Payouts in both tokens need both registrations.
+        const ctoken = p.side === Side.Buy ? d().conf_usdc : d().conf_ustry;
+        const grid = CONFIG.auction.grid;
+        const amount = p.side === Side.Buy ? (qty * (grid.min + BigInt(price_tick) * grid.tick) + UNIT - 1n) / UNIT : qty;
+        for (const t of [d().conf_usdc, d().conf_ustry]) if (await ensureRegistered(kp, t)) log(`${p.bot} registered on ${t.slice(0, 6)}…`);
+        await ensureSpendable(kp, ctoken, amount, CONF_WRAP);
+        const { data, opening, ms } = await depositTransfer(kp, ctoken, d().auction, amount);
+        conf = { amount: opening.amount.toString(), blinding: opening.blinding.toString(16) };
+        openings[key] = { bot: p.bot, auction: "", side: p.side, price_tick, qty: qty.toString(), salt: salt.toString("hex"), ...conf };
+        save(OPENINGS, openings);
+        log(`${p.bot} proved its confidential deposit in ${(ms / 1000).toFixed(1)}s`);
+        ({ value: id } = await write<bigint>(c, "place_order_confidential", {
+          owner: kp.publicKey(), commitment, side: p.side, standing: p.standing, data,
+        }, { writeSlack: 512 }).then((r) => ((hash = r.hash), r)));
+      } else {
+        const token = p.side === Side.Buy ? d().usdc_sac : d().ustry_sac;
+        const deposit_amount = depositFor(p.side, price_tick, qty);
+        // Save the opening before sending: without it the order can never be revealed (1% penalty).
+        openings[key] = { bot: p.bot, auction: "", side: p.side, price_tick, qty: qty.toString(), salt: salt.toString("hex") };
+        save(OPENINGS, openings);
+        ({ value: id } = await write<bigint>(c, "place_order", {
+          owner: kp.publicKey(), commitment, deposit_token: token, deposit_amount, standing: p.standing,
+        }, { writeSlack: 512 }).then((r) => ((hash = r.hash), r)));
+      }
       const o = await read<{ auction: bigint }>(c, "order", { id });
       delete openings[key];
-      openings[id.toString()] = { bot: p.bot, auction: o.auction.toString(), side: p.side, price_tick, qty: qty.toString(), salt: salt.toString("hex") };
+      openings[id.toString()] = { bot: p.bot, auction: o.auction.toString(), side: p.side, price_tick, qty: qty.toString(), salt: salt.toString("hex"), ...conf };
       save(OPENINGS, openings);
       const label = `${p.bot} sealed order #${id}${p.standing ? " (standing)" : ""}`;
       log(label);
       steps.push(step(label, hash));
-    }),
+    },
   );
   save(OPENINGS, openings);
   return steps;
@@ -176,9 +211,10 @@ export async function revealBots(auctionId: bigint, log: (s: string) => void = (
         o.revealed = true;
         return;
       }
-      const { hash } = await write(c, "reveal", {
-        owner: kp.publicKey(), order_id: BigInt(id), side: o.side, price_tick: o.price_tick, qty: BigInt(o.qty), salt: Buffer.from(o.salt, "hex"),
-      });
+      const args = { owner: kp.publicKey(), order_id: BigInt(id), side: o.side, price_tick: o.price_tick, qty: BigInt(o.qty), salt: Buffer.from(o.salt, "hex") };
+      const { hash } = o.amount !== undefined
+        ? await write(c, "reveal_confidential", { ...args, amount: BigInt(o.amount), blinding: toBytes32(BigInt(`0x${o.blinding}`)) })
+        : await write(c, "reveal", args);
       o.revealed = true;
       log(`${o.bot} revealed #${id}`);
       steps.push(step(`${o.bot} revealed order #${id}`, hash));
@@ -196,7 +232,7 @@ export async function revealBots(auctionId: bigint, log: (s: string) => void = (
 
 /** Demo: end the commit window of the auction about to close (if still open), then reveal the bots. */
 export async function endCommits(log: (s: string) => void = () => {}): Promise<{ auction: string; revealEnd: string; steps: Step[] }> {
-  const c = await auction(admin());
+  const c = await auction(operator());
   const steps: Step[] = [];
   // Close empty auctions whose window already passed, so this lands on the one with orders.
   for (;;) {
@@ -207,7 +243,7 @@ export async function endCommits(log: (s: string) => void = () => {}): Promise<{
   let a = await read<AuctionInfo>(c, "closing_auction");
   const now = await nowSecs();
   if (now < a.commit_end) {
-    const { hash } = await write(c, "fast_forward");
+    const { hash } = await write(await auction(admin()), "fast_forward");
     steps.push(step(`ended commits for auction #${a.id}`, hash));
     a = await read<AuctionInfo>(c, "closing_auction");
   }
@@ -217,19 +253,24 @@ export async function endCommits(log: (s: string) => void = () => {}): Promise<{
 
 /** Demo: end the reveal window (if still open), close the auction and settle every payout. */
 export async function closeAndSettle(log: (s: string) => void = () => {}): Promise<{ auction: string; steps: Step[]; result: Record<string, string> }> {
-  const c = await auction(admin());
+  const c = await auction(operator());
   const steps: Step[] = [];
   const a = await read<AuctionInfo>(c, "closing_auction");
   const now = await nowSecs();
   if (now < a.commit_end) throw new Error(`auction #${a.id} is still taking orders; end commits first`);
   if (now < a.reveal_end) {
-    const { hash } = await write(c, "fast_forward");
+    const { hash } = await write(await auction(admin()), "fast_forward");
     steps.push(step(`ended reveals for auction #${a.id}`, hash));
   }
   const { value: r, hash } = await write<Record<string, bigint | boolean>>(c, "close_auction");
   steps.push(step(`closed auction #${r.auction}`, hash));
   log(`closed auction #${r.auction}`);
   const info = await read<{ to_settle: bigint[] }>(c, "auction", { id: r.auction });
+  if (CONFIDENTIAL) {
+    const pending = load<string[]>(PENDING_SETTLE, []);
+    save(PENDING_SETTLE, [...new Set([...pending, String(r.auction)])]);
+    steps.push(...(await settleConfidential(log)));
+  }
   for (let i = 0; i < info.to_settle.length; i += 8) {
     const { hash: h } = await write(c, "settle", { order_ids: info.to_settle.slice(i, i + 8) });
     steps.push(step(`settled ${Math.min(8, info.to_settle.length - i)} orders`, h));
@@ -238,15 +279,68 @@ export async function closeAndSettle(log: (s: string) => void = () => {}): Promi
 }
 
 /**
+ * CONFIDENTIAL: pay every recorded amount of the closed auctions still pending, one proof at a time.
+ * Unrevealed bot deposits are opened first (their openings are on disk). Safe to rerun: paid
+ * amounts are zero on-chain and skipped, so if the server stops, the next run resumes.
+ */
+export async function settleConfidential(log: (s: string) => void = () => {}): Promise<Step[]> {
+  const pending = load<string[]>(PENDING_SETTLE, []);
+  if (!pending.length) return [];
+  const c = await auction(operator());
+  const steps: Step[] = [];
+  const openings = load<Openings>(OPENINGS, {});
+  const { hash: mh } = await write(c, "merge_confidential");
+  steps.push(step("auction merged its received deposits", mh));
+  type Ord = { id: bigint; owner: string; status: number; owed_base: bigint; owed_quote: bigint };
+  for (const auctionId of [...pending]) {
+    const a = await read<{ orders: bigint[]; to_settle: bigint[] }>(c, "auction", { id: BigInt(auctionId) });
+    let left = 0;
+    for (const id of [...new Set([...a.orders, ...a.to_settle].map(String))].map(BigInt)) {
+      const dep = await read<{ opened: boolean } | undefined>(c, "conf_deposit", { order_id: id });
+      if (!dep) continue;
+      let o = await read<Ord>(c, "order", { id });
+      if (!dep.opened && o.status === 2) {
+        const op = openings[id.toString()];
+        if (op?.amount === undefined) {
+          log(`order #${id}: unrevealed user deposit, opening not known here yet`);
+          left++;
+          continue;
+        }
+        const { hash } = await write(c, "open_deposit", { order_id: id, amount: BigInt(op.amount), blinding: toBytes32(BigInt(`0x${op.blinding}`)) });
+        steps.push(step(`opened unrevealed deposit #${id} (1% penalty)`, hash));
+        o = await read<Ord>(c, "order", { id });
+      }
+      for (const [base, amount] of [[true, o.owed_base], [false, o.owed_quote]] as const) {
+        if (amount <= 0n) continue;
+        try {
+          const token = base ? d().conf_ustry : d().conf_usdc;
+          const { data, opening, ms } = await payoutTransfer(token, d().auction, o.owner, amount);
+          const { hash } = await write(c, "pay_confidential", { order_id: id, base, amount, blinding: toBytes32(opening.blinding), data });
+          const label = `paid order #${id} its ${base ? "USTRY" : "USDC"} (proof ${(ms / 1000).toFixed(1)}s)`;
+          log(label);
+          steps.push(step(label, hash));
+        } catch (e) {
+          left++;
+          log(`payout of #${id} failed, will retry: ${String((e as Error)?.message ?? e).slice(0, 160)}`);
+        }
+      }
+    }
+    if (left === 0) save(PENDING_SETTLE, load<string[]>(PENDING_SETTLE, []).filter((x) => x !== auctionId));
+  }
+  return steps;
+}
+
+/**
  * One tick of the automatic loop (non-demo timing): reveal bots during reveal windows,
  * close auctions whose reveal ended, and seed when the open auction has no bot orders.
  */
 export async function loopTick(log: (s: string) => void = console.log) {
-  const c = await auction(admin());
+  const c = await auction(operator());
   const [closing, current] = await Promise.all([read<AuctionInfo>(c, "closing_auction"), read<AuctionInfo>(c, "current_auction")]);
   const now = await nowSecs();
   if (now >= closing.commit_end && now < closing.reveal_end) await revealBots(closing.id, log);
   if (now >= closing.reveal_end) await closeAndSettle(log);
+  else if (CONFIDENTIAL) await settleConfidential(log); // resume payouts left by a restart or a failure
   const openings = load<Openings>(OPENINGS, {});
   if (!Object.values(openings).some((o) => o.auction === current.id.toString())) await seed(log);
 }
