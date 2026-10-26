@@ -4,7 +4,8 @@
 // candle that burns down, goes out (bidding ends) and relights. Decorative only (aria-hidden, no pointer events);
 // prefers-reduced-motion turns every animation off (global.css).
 
-// Deterministic layout: [x %, size px, duration s, delay s, sway px].
+// The gavel and candle are anchored from the top, beside the widget, so they are visible
+// without scrolling whatever the page height. Deterministic layout: [x %, size px, duration s, delay s, sway px].
 const ENVELOPES: [number, number, number, number, number][] = [
   [6, 22, 19, 0, 18], [14, 16, 23, 6, -14], [22, 26, 17, 11, 12], [31, 14, 25, 3, -10],
   [68, 18, 21, 8, 16], [76, 28, 18, 1, -18], [84, 15, 24, 13, 10], [92, 22, 20, 5, -12],
@@ -59,7 +60,7 @@ export function TradeBackdrop() {
           </svg>
         </div>
       ))}
-      <div className="backdrop-gavel" style={{ position: "absolute", left: "5%", bottom: "8%", width: "120px", height: "200px", opacity: 0.65 }}>
+      <div className="backdrop-gavel" style={{ position: "absolute", left: "5%", top: "250px", width: "120px", height: "200px", opacity: 0.65 }}>
         {/* Candle auction: bidding lasts until the candle goes out */}
         <svg viewBox="0 0 120 200" width="120" height="200" style={{ overflow: "visible" }}>
           <ellipse cx="60" cy="188" rx="44" ry="8" fill="#FFD6FF" />
@@ -83,7 +84,7 @@ export function TradeBackdrop() {
           </g>
         </svg>
       </div>
-      <div className="backdrop-gavel" style={{ position: "absolute", right: "6%", bottom: "8%", width: "190px", height: "170px", opacity: 0.6 }}>
+      <div className="backdrop-gavel" style={{ position: "absolute", right: "5%", top: "280px", width: "190px", height: "170px", opacity: 0.6 }}>
         <svg viewBox="0 0 190 170" width="190" height="170" style={{ overflow: "visible" }}>
           {/* impact ring and "Cleared" tag, on each strike */}
           <ellipse cx="78" cy="138" rx="40" ry="10" fill="none" stroke="#FC72FF" strokeWidth="2" style={{ transformBox: "fill-box", transformOrigin: "center", animation: "gavelRing 5s ease-out infinite" }} />
