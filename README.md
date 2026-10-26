@@ -23,7 +23,7 @@
 
 ## Contents
 
-1. [The problem](#the-problem): thin-DEX prices and the February 2026 exploit
+1. [The problem](#the-problem): thin-DEX prices and the February 2026 exploit, replayed in six steps
 2. [The idea](#the-idea): sealed auctions → a price and a measured depth
 3. [How Fathom works](#how-fathom-works): one auction, step by step · [what is hidden](#what-is-hidden-and-until-when)
 4. [A tour of the app](#a-tour-of-the-app): every page, with screenshots
@@ -58,6 +58,11 @@ borrowed against at that price: **about $10–11M drained**, about $7M later fro
 ([Halborn](https://www.halborn.com/blog/post/explained-the-yieldblox-hack-february-2026),
 [Protos](https://protos.com/yieldblox-lending-pool-hit-by-10m-hack-on-stellar/),
 [Rekt](https://rekt.news/yieldblox-rekt)).
+
+**The attack, replayed on testnet** in Fathom's [Attack demo](https://fathom-b3t.pages.dev/replay): the same
+13,000 USTRY and the same $1M request go to two pools that differ only in their price source.
+
+<p align="center"><img src="docs/screenshots/attack-storyboard.png" alt="The February 2026 attack in six steps: thin market, one-trade pump to $106, the loan request, Pool A drained, Pool B rejects, outcome" width="900"></p>
 
 Two things were missing:
 

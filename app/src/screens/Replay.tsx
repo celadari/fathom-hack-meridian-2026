@@ -138,7 +138,7 @@ function ReplayRoom({ r }: { r: ReplayView }) {
     },
     {
       short: "Pool B", title: "Pool B uses Fathom and says no",
-      body: <>Pool B values the collateral at Fathom's price, the median of the last {medianWindow} sealed auctions, which one DEX trade cannot move: {fmtInt(r.collateral)} × {fmtUsd(r.fathomPrice)} = <b>{fmtUsd(bValue, 0)}</b>, so at most {fmtUsd(bValue * ltv, 0)}. It also caps how much {base} it accepts by Fathom's depth. <b>Rejected</b>{live ? ", and the rejection is recorded on-chain." : ". When run on testnet (?demo), the rejection is recorded on-chain."}{reasons.length > 0 && <ul style={{ margin: "8px 0 0", paddingLeft: "18px" }}>{reasons.map((t) => <li key={t}>{t}</li>)}</ul>}</>,
+      body: <>Pool B values the collateral at Fathom's price, the median of the last {medianWindow} sealed auctions, which one DEX trade cannot move: {fmtInt(r.collateral)} × {fmtUsd(r.fathomPrice)} = <b>{fmtUsd(bValue, 0)}</b>, so at most {fmtUsd(bValue * ltv, 0)}. It also caps how much {base} it accepts by Fathom's depth. <b>Rejected</b>{live ? ", and the rejection is recorded on-chain." : ". When the replay runs live on testnet, the rejection is recorded on-chain."}{reasons.length > 0 && <ul style={{ margin: "8px 0 0", paddingLeft: "18px" }}>{reasons.map((t) => <li key={t}>{t}</li>)}</ul>}</>,
       art: <ArtMath tone="good" lines={[`${fmtInt(r.collateral)} × ${fmtUsd(r.fathomPrice)}`, `= ${fmtUsd(bValue, 0)} collateral`, `× ${r.ltvPct}% = ${fmtUsd(bValue * ltv, 0)} max`]} verdict="Borrow rejected" />, link: links.poolB,
     },
     {
