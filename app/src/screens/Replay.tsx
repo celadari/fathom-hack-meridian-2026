@@ -152,26 +152,21 @@ function ReplayRoom({ r }: { r: ReplayView }) {
 
   return (
     <main style={{ maxWidth: "1360px", margin: "0 auto", padding: "24px 32px 48px", display: "flex", flexDirection: "column", gap: "20px" }}>
-      <section aria-label="Two pools, one difference" style={{ ...card, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "16px", alignItems: "stretch" }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: "6px", justifyContent: "center" }}>
-          <span style={{ fontSize: "13px", color: "#7D7D7D", letterSpacing: ".08em", textTransform: "uppercase" }}>Two pools, one difference</span>
-          <span style={{ fontSize: "15px", color: "#131313" }}>Same {fmtUsd(r.poolTvl, 0)} to lend. Same rule: lend up to {r.ltvPct}% of the collateral's value.</span>
-          <span style={{ fontSize: "13px", color: "#7D7D7D" }}>Only where they get the {base} price differs.</span>
-        </div>
-        <PoolCard name="Pool A" source="last DEX trade" detail="one trade can set it" tone="bad" />
-        <PoolCard name="Pool B" source="Fathom oracle" detail={`median of ${medianWindow} sealed auctions + depth cap`} tone="good" />
-      </section>
 
       <section aria-label="The attack, step by step" style={{ ...card, display: "flex", flexDirection: "column", gap: "16px" }}>
         <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "10px" }}>
           <h2 style={{ margin: 0, fontSize: "20px", fontWeight: 600 }}>The February attack, step by step</h2>
-          <span style={{ fontSize: "12px", color: live ? "#40B66B" : "#B7791F" }}>{live ? "Live on testnet: steps 2, 4 and 5 send real transactions." : "Simulated: DEX and Pool A numbers are the scenario; Fathom and Pool B are live reads. Open with ?demo to run it on testnet."}</span>
+          <span style={{ fontSize: "12px", color: live ? "#40B66B" : "#B7791F" }}>{live ? "Live on testnet: steps 2, 4 and 5 send real transactions." : "Simulated: DEX and Pool A numbers are the scenario; Fathom and Pool B numbers are live reads."}</span>
           <span style={{ marginLeft: "auto", display: "flex", gap: "6px" }}>
             <button type="button" style={btn} disabled={busy || k === 0} onClick={() => void goTo(k - 1)}>‹ Back</button>
             <button type="button" style={{ ...btn, background: "#FC72FF", color: "#FFFFFF", border: "none", fontWeight: 600 }} disabled={busy || k === 5} onClick={() => void goTo(k + 1)}>{busy ? "Running on testnet…" : k === 0 ? "Start the attack ›" : "Next ›"}</button>
             <button type="button" style={btn} disabled={busy} onClick={() => void reset()}>Reset</button>
           </span>
         </div>
+        <p style={{ margin: 0, fontSize: "14px", color: "#4A4A4A" }}>
+          Two pools, same {fmtUsd(r.poolTvl, 0)} and same rule (lend up to {r.ltvPct}% of the collateral's value). Only the price source differs:{" "}
+          <b style={{ color: "#E5484D" }}>Pool A</b> reads the last DEX trade; <b style={{ color: "#40B66B" }}>Pool B</b> reads Fathom (median of {medianWindow} sealed auctions + depth cap).
+        </p>
         <ol style={{ margin: 0, padding: 0, listStyle: "none", display: "grid", gridTemplateColumns: "repeat(6, minmax(0, 1fr))", gap: "6px" }}>
           {steps.map((st, i) => {
             const done = i < k, on = i === k;
@@ -214,18 +209,6 @@ function ReplayRoom({ r }: { r: ReplayView }) {
 
 const card: CSSProperties = { background: "#FFFFFF", border: "1px solid #F0F0F0", borderRadius: "24px", padding: "20px" };
 const TONE = { good: ["#40B66B", "#EEF9F1"], bad: ["#E5484D", "#FDECEC"], warn: ["#B7791F", "#FFF6E0"], ok: ["#40B66B", "#EEF9F1"] } as const;
-
-function PoolCard({ name, source, detail, tone }: { name: string; source: string; detail: string; tone: "good" | "bad" }) {
-  const [c, bg] = TONE[tone];
-  return (
-    <div style={{ border: `1px solid ${c}`, background: bg, borderRadius: "18px", padding: "14px 16px", display: "flex", flexDirection: "column", gap: "4px" }}>
-      <span style={{ fontWeight: 600, fontSize: "17px" }}>{name}</span>
-      <span style={{ fontSize: "13px", color: "#7D7D7D" }}>gets the price from</span>
-      <span style={{ fontSize: "18px", fontWeight: 600, color: c }}>{source}</span>
-      <span style={{ fontSize: "13px", color: "#4A4A4A" }}>{detail}</span>
-    </div>
-  );
-}
 
 function Status({ name, sees, tvl, max, state, tone }: { name: string; sees: string; tvl: number; max: number; state: string; tone: keyof typeof TONE }) {
   const [c, bg] = TONE[tone];
