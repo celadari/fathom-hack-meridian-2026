@@ -83,13 +83,6 @@ export function demoToken(): string {
     return fromUrl ?? "";
   }
 }
-export function setDemoToken(token: string) {
-  try {
-    sessionStorage.setItem("fathom:demo-token", token);
-  } catch {
-    /* private mode */
-  }
-}
 /** ?verifier (or ?demo): show the on-chain verifier demo panel (dummy order only). */
 export const VERIFIER_DEMO = flag("verifier") || DEMO;
 /** ?mock: render mock data (screenshot comparison with the designs). */

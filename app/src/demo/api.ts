@@ -1,7 +1,8 @@
 // Calls to the demo server (scripts/demo-server.ts): local through the Vite proxy, or the
 // hosted one (VITE_DEMO_API). It holds the admin, bot and attacker keys; the browser never does.
 // Actions on the hosted server need its token (?demo=<token>); status and the faucet do not.
-import { DEMO_API, demoToken } from "../config";
+import { useEffect, useState } from "react";
+import { DEMO, DEMO_API, demoToken } from "../config";
 
 export interface DemoStep { label: string; hash?: string; link?: string }
 export interface DemoStatus {
@@ -38,3 +39,19 @@ export const demo = {
   replay: (n: 0 | 1 | 2 | 3) => call<DemoStatus["replay"] & { assessment?: unknown }>("POST", `replay/${n}`),
   faucet: (address: string) => call<{ steps: DemoStep[] }>("POST", "faucet", { address }),
 };
+
+/**
+ * Presenter mode: the ?demo controls act through the demo server with its keys, so they are
+ * shown only to whoever holds the token (opened the app with ?demo=<token>), or when the
+ * server needs none (a local demo server). Everyone else gets the normal app.
+ */
+let presenterCheck: Promise<boolean> | null = null;
+export function usePresenter(): boolean {
+  const [ok, setOk] = useState(DEMO && !!demoToken());
+  useEffect(() => {
+    if (!DEMO || demoToken()) return;
+    presenterCheck ??= demo.status().then((s) => !s.auth).catch(() => false);
+    void presenterCheck.then(setOk);
+  }, []);
+  return ok;
+}

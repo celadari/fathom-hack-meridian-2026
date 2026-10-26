@@ -7,9 +7,9 @@ import { useSearchParams } from "react-router";
 import { Header, Page } from "../components/Header";
 import { PageIntro } from "../components/PageIntro";
 import { Slice, TxLine, type TxState } from "../components/State";
-import { DEMO, SET_BY_US } from "../config";
+import { SET_BY_US } from "../config";
 import { DEX_TITLE, SetByUs } from "../components/SetByUs";
-import { demo, type DemoStep } from "../demo/api";
+import { demo, usePresenter, type DemoStep } from "../demo/api";
 import type { ReplayView } from "../data/types";
 import { useFathom } from "../data/useFathom";
 import { fmtInt, fmtK, fmtUsd } from "../lib/format";
@@ -43,7 +43,7 @@ function ReplayRoom({ r }: { r: ReplayView }) {
   const [k, setK] = useState(0); // story step shown, 0..5
   const [tx, setTx] = useState<TxState>({ status: "idle" });
   const [links, setLinks] = useState<{ pump?: DemoStep; poolA?: DemoStep; poolB?: DemoStep }>({});
-  const live = DEMO;
+  const live = usePresenter(); // live testnet run only for the presenter (demo token)
   const base = "USTRY";
   const a = r.assessment;
   const dexStart = SET_BY_US.dexStart;

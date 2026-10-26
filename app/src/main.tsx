@@ -14,9 +14,7 @@ import { MyOrdersProvider } from "./stellar/myOrders";
 import { WalletProvider } from "./stellar/wallet";
 import "./styles/global.css";
 import "./styles/explainer.css";
-import { DEMO } from "./config";
 
-if (DEMO) document.body.classList.add("demo");
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
