@@ -10,6 +10,9 @@ terraform {
 }
 
 # Applied once from your laptop with your own credentials (gcloud auth application-default login).
+# User credentials need a quota project for the Budgets API: bill API calls to this project.
 provider "google" {
-  project = var.project_id
+  project               = var.project_id
+  billing_project       = var.project_id
+  user_project_override = true
 }

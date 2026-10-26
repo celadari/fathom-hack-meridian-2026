@@ -31,7 +31,7 @@ flowchart LR
 | Secret Manager: 3 secrets, 1 version each | $0 (6 active versions free) |
 | Artifact Registry: last 3 images | $0 (0.5 GB free) |
 | Cloudflare Pages, Tunnel, Worker (100k requests/day free), Workers VPC (free during its beta) | $0 |
-| **Total** | **$0**, with a $5 budget alert |
+| **Total** | **$0**, with a budget alert of 5 in the billing account's currency |
 
 Why no IPv4 and no NAT: everything the server talks to has IPv6 (Soroban RPC, Friendbot, the Cloudflare
 tunnel edge, the Ubuntu and Cloudflare apt repos), and Google APIs go through Private Google Access. The

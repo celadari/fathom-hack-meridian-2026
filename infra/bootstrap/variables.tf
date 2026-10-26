@@ -8,8 +8,8 @@ variable "billing_account_id" {
   type        = string
 }
 
-variable "budget_amount_usd" {
-  description = "Monthly budget alert, in US dollars."
+variable "budget_amount" {
+  description = "Monthly budget alert, in the billing account's currency."
   type        = number
   default     = 5
 }

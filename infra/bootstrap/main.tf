@@ -25,10 +25,10 @@ resource "google_billing_budget" "monthly" {
     projects = ["projects/${data.google_project.this.number}"]
   }
 
+  # No currency_code: it must equal the billing account's (EUR for some accounts), so leave it implied.
   amount {
     specified_amount {
-      currency_code = "USD"
-      units         = tostring(var.budget_amount_usd)
+      units = tostring(var.budget_amount)
     }
   }
 
