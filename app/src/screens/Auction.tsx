@@ -7,6 +7,7 @@ import { useEffect, useState, type CSSProperties } from "react";
 import { Link } from "react-router";
 import { FundingPanel, useAccount } from "../components/Funding";
 import { Header, Page } from "../components/Header";
+import { ConfidentialScene } from "../components/ConfidentialScene";
 import { MyOrdersPanel } from "../components/MyOrdersPanel";
 import { NAV_TITLE, SetByUs } from "../components/SetByUs";
 import { Slice } from "../components/State";
@@ -193,6 +194,9 @@ function AuctionRoom({ a }: { a: AuctionView }) {
                 <g transform="translate(330 22)"><circle cx="40" cy="40" r="34" fill="none" stroke="#D9D9D9" strokeWidth="2" strokeDasharray="4 6" /><text x="40" y="45" textAnchor="middle" fontSize="13" fill="#B5B5B5">ZK</text></g>
               )}
             </svg>
+            {CONFIDENTIAL && progress.stages.length > 0 && (
+              <ConfidentialScene stages={progress.stages} locked={locked} failed={p?.step === "error"} token={lockTok} />
+            )}
             <ol style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: "8px", fontSize: "14px" }}>
               <li className="fade" style={{ display: "flex", gap: "8px" }}>
                 <span style={{ color: fingerprint ? "#40B66B" : "#B5B5B5" }}>{fingerprint ? "✓" : "…"}</span>

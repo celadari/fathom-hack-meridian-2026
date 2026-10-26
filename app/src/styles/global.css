@@ -55,6 +55,13 @@ svg * { transform-box: fill-box; }
 .bars rect:nth-child(4) { animation-delay: .3s } .bars rect:nth-child(5) { animation-delay: .4s }
 .bars rect:nth-child(6) { animation-delay: .5s } .bars rect:nth-child(7) { animation-delay: .6s }
 
+/* Confidential deposit stations (components/ConfidentialScene.tsx) */
+@keyframes stationRing { 0% { transform: scale(1); opacity: .9 } 100% { transform: scale(1.45); opacity: 0 } }
+@keyframes keyTurn { 0%, 100% { transform: rotate(0) } 50% { transform: rotate(-35deg) } }
+@keyframes coinWrap { 0% { transform: translateY(-14px); opacity: 0 } 35%, 70% { transform: none; opacity: 1 } 100% { transform: translateY(4px) scale(.85); opacity: .6 } }
+@keyframes proofLine { 0% { stroke-dashoffset: 12 } 50%, 100% { stroke-dashoffset: 0 } }
+@keyframes shackle { 0%, 100% { transform: translateY(-4px) } 50% { transform: none } }
+
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important } }
 
 /* ?demo: keep page content clear of the fixed demo bar. */
