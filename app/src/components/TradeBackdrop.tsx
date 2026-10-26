@@ -1,5 +1,5 @@
 // Animated background for the Trade page: drifting color, sonar pulses from behind the widget,
-// sealed envelopes, bid paddles and privacy coins (they spin from "$" to a padlock) rising like
+// a candlestick chart forming, sealed envelopes, bid paddles and privacy coins (they spin from "$" to a padlock) rising like
 // bubbles, an auctioneer's gavel that strikes "cleared" every few seconds, and a candle auction
 // candle that burns down, goes out (bidding ends) and relights. Decorative only (aria-hidden, no pointer events);
 // prefers-reduced-motion turns every animation off (global.css).
@@ -22,11 +22,50 @@ const PADDLES: [number, number, number, number][] = [[10, 12, 24, 4], [35, 7, 28
 // Privacy coins: [x %, size px, duration s, delay s].
 const COINS: [number, number, number, number][] = [[18, 30, 21, 3], [42, 24, 25, 12], [58, 28, 23, 7], [80, 26, 22, 16], [8, 22, 26, 10]];
 
+// Candlestick chart: a fixed random walk (deterministic, so every render matches).
+const CANDLES = (() => {
+  let seed = 7, price = 100;
+  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  return Array.from({ length: 36 }, () => {
+    const open = price;
+    const close = open + (rnd() - 0.48) * 8;
+    const high = Math.max(open, close) + rnd() * 4;
+    const low = Math.min(open, close) - rnd() * 4;
+    price = close;
+    return { open, close, high, low };
+  });
+})();
+const C_MIN = Math.min(...CANDLES.map((c) => c.low)), C_MAX = Math.max(...CANDLES.map((c) => c.high));
+const cy = (v: number) => 20 + ((C_MAX - v) / (C_MAX - C_MIN)) * 180;
+const MA = CANDLES.map((_, i) => { const w = CANDLES.slice(Math.max(0, i - 4), i + 1); return w.reduce((a, c) => a + c.close, 0) / w.length; });
+
+function CandlestickChart() {
+  return (
+    <svg viewBox="0 0 1440 220" preserveAspectRatio="none" style={{ width: "100%", height: "100%", display: "block" }}>
+      {CANDLES.map((c, i) => {
+        const x = 30 + i * 40, up = c.close >= c.open, col = up ? "#40B66B" : "#E8607A";
+        return (
+          // each candle grows from its middle, in a wave left to right, then fades and grows again
+          <g key={i} style={{ transformBox: "fill-box", transformOrigin: "center", animation: `candleGrow 12s ease-out ${i * 0.28}s infinite both` }}>
+            <line x1={x} x2={x} y1={cy(c.high)} y2={cy(c.low)} stroke={col} strokeWidth="2" />
+            <rect x={x - 9} y={cy(Math.max(c.open, c.close))} width="18" height={Math.max(3, Math.abs(cy(c.open) - cy(c.close)))} rx="2" fill={col} />
+          </g>
+        );
+      })}
+      <polyline points={MA.map((v, i) => `${30 + i * 40},${cy(v)}`).join(" ")} fill="none" stroke="#FC72FF" strokeWidth="2.5" style={{ strokeDasharray: 1500, animation: "maDraw 12s linear infinite" }} />
+    </svg>
+  );
+}
+
 export function TradeBackdrop() {
   return (
     <div aria-hidden="true" style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none", zIndex: 0 }}>
       <div style={{ position: "absolute", width: "560px", height: "560px", left: "-140px", top: "80px", borderRadius: "50%", background: "radial-gradient(circle, rgba(252,114,255,.22), rgba(252,114,255,0) 70%)", animation: "blobDrift 18s ease-in-out infinite alternate" }} />
       <div style={{ position: "absolute", width: "620px", height: "620px", right: "-180px", top: "260px", borderRadius: "50%", background: "radial-gradient(circle, rgba(170,130,255,.18), rgba(170,130,255,0) 70%)", animation: "blobDrift 22s ease-in-out -6s infinite alternate-reverse" }} />
+      {/* candlestick chart: a wide faint band behind the widget, visible without scrolling */}
+      <div style={{ position: "absolute", left: 0, right: 0, top: "430px", height: "220px", opacity: 0.22 }}>
+        <CandlestickChart />
+      </div>
       <div style={{ position: "absolute", left: "50%", top: "380px", width: 0, height: 0 }}>
         {[0, 2, 4].map((d) => (
           <span key={d} style={{ position: "absolute", left: "-60px", top: "-60px", width: "120px", height: "120px", borderRadius: "50%", border: "2px solid rgba(252,114,255,.35)", animation: `sonarWide 6s ease-out ${d}s infinite` }} />

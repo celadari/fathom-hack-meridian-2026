@@ -1,7 +1,7 @@
 // How it works: the order's whole life, accurately, with the rules read from the contracts.
 // Timeline → six illustrated steps → what is hidden when → why depth can't be faked → what to trust.
 // Illustrations use example numbers; animations live in styles/explainer.css (scoped under .fx).
-import type { CSSProperties, ReactNode } from "react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { Header, Page } from "../components/Header";
 import { PageIntro } from "../components/PageIntro";
 import { CONFIDENTIAL, VERIFIER_DEMO } from "../config";
@@ -13,17 +13,64 @@ const cardStyle: CSSProperties = { background: "#FFFFFF", border: "1px solid #F0
 const art: CSSProperties = { width: "100%", height: "auto", background: "#F9F9F9", borderRadius: "16px" };
 const h2: CSSProperties = { margin: 0, fontSize: "20px", fontWeight: 600 };
 
-function Step({ n, label, title, children, svg }: { n: number; label: string; title: string; children: ReactNode; svg: ReactNode }) {
+interface WalkStep { key: string; short: string; when: string; title: string; svg: ReactNode; body: ReactNode }
+
+/**
+ * The six steps one at a time: a clickable timeline on top, the current step's animation and text
+ * below. Advances by itself every few seconds (pauses on hover, on click, or with the button).
+ */
+function Walkthrough({ steps }: { steps: WalkStep[] }) {
+  const [at, setAt] = useState(0);
+  const [playing, setPlaying] = useState(true);
+  const [hover, setHover] = useState(false);
+  const DWELL = 7000;
+  useEffect(() => {
+    if (!playing || hover) return;
+    const id = setTimeout(() => setAt((i) => (i + 1) % steps.length), DWELL);
+    return () => clearTimeout(id);
+  }, [at, playing, hover, steps.length]);
+  const go = (i: number) => { setAt((i + steps.length) % steps.length); setPlaying(false); };
+  const s = steps[at];
+  const btn: CSSProperties = { border: "1px solid #F0F0F0", background: "#FFFFFF", borderRadius: "12px", width: "36px", height: "36px", fontSize: "18px", cursor: "pointer", fontFamily: "inherit" };
   return (
-    <section aria-label={`Step ${n}, ${label}`} style={cardStyle}>
-      {svg}
-      <div style={{ display: "flex", gap: "12px", alignItems: "baseline" }}>
-        <span style={{ flex: "none", width: "26px", height: "26px", borderRadius: "50%", background: "#FC72FF", color: "#FFFFFF", fontWeight: 600, fontSize: "14px", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{n}</span>
-        <div>
-          <div style={{ fontWeight: 600, fontSize: "17px" }}>{title}</div>
-          <div style={{ color: "#4A4A4A", fontSize: "14px", lineHeight: 1.5, marginTop: "2px" }}>{children}</div>
+    <section aria-label="Step by step" onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)} style={{ ...cardStyle, gap: "18px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+        <h2 style={h2}>One auction, step by step</h2>
+        <span style={{ marginLeft: "auto", display: "flex", gap: "6px" }}>
+          <button type="button" style={btn} onClick={() => go(at - 1)} aria-label="Previous step">‹</button>
+          <button type="button" style={{ ...btn, width: "auto", padding: "0 12px", fontSize: "13px" }} onClick={() => setPlaying(!playing)}>{playing ? "Pause" : "Play"}</button>
+          <button type="button" style={btn} onClick={() => go(at + 1)} aria-label="Next step">›</button>
+        </span>
+      </div>
+      <ol style={{ margin: 0, padding: 0, listStyle: "none", position: "relative", display: "grid", gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))`, gap: "6px" }}>
+        <li aria-hidden="true" style={{ position: "absolute", left: `${50 / steps.length}%`, right: `${50 / steps.length}%`, top: "17px", height: "4px", background: "#F0F0F0", borderRadius: "2px" }} />
+        <li aria-hidden="true" style={{ position: "absolute", left: `${50 / steps.length}%`, width: `${(at / (steps.length - 1)) * (100 - 100 / steps.length)}%`, top: "17px", height: "4px", background: "#FC72FF", borderRadius: "2px", transition: "width .6s ease-out" }} />
+        {steps.map((st, i) => {
+          const done = i < at, cur = i === at;
+          return (
+            <li key={st.key} style={{ position: "relative" }}>
+              <button type="button" onClick={() => go(i)} aria-current={cur ? "step" : undefined} style={{ width: "100%", border: "none", background: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", textAlign: "center" }}>
+                <span style={{ width: "38px", height: "38px", borderRadius: "50%", background: cur || done ? "#FC72FF" : "#FFFFFF", border: "3px solid #FC72FF", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 600, color: cur || done ? "#FFFFFF" : "#FC72FF", transform: cur ? "scale(1.12)" : "none", transition: "all .3s", boxShadow: cur ? "0 0 0 6px rgba(252,114,255,.18)" : "none" }}>{done ? "✓" : i + 1}</span>
+                <span style={{ fontWeight: cur ? 600 : 535, color: cur ? "#131313" : "#7D7D7D" }}>{st.short}</span>
+                <span style={{ fontSize: "12px", color: "#FC72FF" }}>{st.when}</span>
+              </button>
+            </li>
+          );
+        })}
+      </ol>
+      {/* key: remounting restarts the step's animations each time it is shown */}
+      <div key={s.key} className="fade" style={{ display: "flex", flexWrap: "wrap", gap: "24px", alignItems: "center" }}>
+        <div style={{ flex: "1 1 460px", minWidth: 0 }}>{s.svg}</div>
+        <div style={{ flex: "1 1 320px", minWidth: 0, display: "flex", flexDirection: "column", gap: "8px" }}>
+          <span style={{ fontSize: "13px", color: "#FC72FF", fontWeight: 600 }}>Step {at + 1} of {steps.length} · {s.when}</span>
+          <span style={{ fontSize: "22px", fontWeight: 600 }}>{s.title}</span>
+          <span style={{ fontSize: "15px", color: "#4A4A4A", lineHeight: 1.55 }}>{s.body}</span>
         </div>
       </div>
+      <div aria-hidden="true" style={{ height: "3px", borderRadius: "2px", background: "#F5F5F5", overflow: "hidden" }}>
+        {playing && !hover && <div key={`${at}-${playing}`} style={{ height: "100%", background: "#FFD6FF", animation: `stepDwell ${DWELL}ms linear both` }} />}
+      </div>
+      <span style={{ fontSize: "12px", color: "#B7791F" }}>Demo timing on testnet ({CONFIDENTIAL ? "8 min of orders, 2 min to reveal" : "3 min of orders, 1 min to reveal"}). A production market would run one auction a day.</span>
     </section>
   );
 }
@@ -43,45 +90,16 @@ export function HowItWorks() {
   const capShare = l?.poolB.capSharePct ?? 50;
   const sizes = a ? a.depositSizes.map(fmtK).join(" / ") : "10K / 50K / 250K";
 
-  const phases = [
-    { t: "Orders", s: `${periodMin} min`, d: "Sealed orders come in" },
-    { t: "Reveal", s: `${revealMin} min`, d: "Orders are opened" },
-    { t: "Close", s: "one tx", d: "One price for all" },
-    { t: "Payouts", s: "after close", d: "Fills and refunds" },
-    { t: "Published", s: "same tx as close", d: "Price + depth on-chain" },
-  ];
-
-  return (
-    <Page minHeight={1080} className="fx">
-      <Header />
-      <PageIntro width={1280} title="How it works" what="What happens to an order, from sealing to the price lenders read."
-        why={<>Every few minutes Fathom runs a sealed-bid auction for USTRY and publishes its result as an oracle. Illustrations use example numbers; the rules are read live from the contracts.</>} />
-      <main style={{ maxWidth: "1280px", margin: "0 auto", padding: "24px", display: "flex", flexDirection: "column", gap: "24px" }}>
-
-        <section aria-label="Timeline" style={{ ...cardStyle, gap: "16px" }}>
-          <h2 style={h2}>One auction, start to finish</h2>
-          <div style={{ position: "relative", display: "grid", gridTemplateColumns: `repeat(${phases.length}, minmax(0, 1fr))`, gap: "8px" }}>
-            <div aria-hidden="true" style={{ position: "absolute", left: "10%", right: "10%", top: "17px", height: "4px", background: "#F0F0F0", borderRadius: "2px" }} />
-            <div aria-hidden="true" style={{ position: "absolute", left: "10%", right: "10%", top: "17px", height: "4px", borderRadius: "2px", background: "linear-gradient(90deg, #FC72FF, #FFD6FF)", transformOrigin: "0 50%", animation: "timelineFill 9s linear infinite" }} />
-            {phases.map((p, i) => (
-              <div key={p.t} style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: "4px" }}>
-                <span style={{ width: "38px", height: "38px", borderRadius: "50%", background: "#FFFFFF", border: "3px solid #FC72FF", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 600, color: "#FC72FF", animation: `phasePulse 9s ease-out ${i * 1.8}s infinite` }}>{i + 1}</span>
-                <span style={{ fontWeight: 600 }}>{p.t}</span>
-                <span style={{ fontSize: "12px", color: "#FC72FF" }}>{p.s}</span>
-                <span style={{ fontSize: "13px", color: "#7D7D7D" }}>{p.d}</span>
-              </div>
-            ))}
-          </div>
-          <span style={{ fontSize: "12px", color: "#B7791F" }}>Demo timing on testnet. A production market would run one auction a day.</span>
-        </section>
-
-        <div className="fx-grid" style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "20px" }}>
-          <Step n={1} label="seal" title="You seal your order in your browser" svg={SEAL}>
+  const steps: WalkStep[] = [
+    { key: "seal", short: "Seal", when: `${periodMin}-min window`, title: "You seal your order in your browser", svg: SEAL, body: (
+      <>
             You choose side, quantity and a limit price. Your browser commits to them with a fingerprint
             (a Poseidon hash with a random salt) and checks a zero-knowledge proof that the order is on the price
             grid and paid for. Only the fingerprint goes on-chain; the details stay in your browser.
-          </Step>
-          <Step n={2} label="deposit" title={CONFIDENTIAL ? "You lock a confidential deposit" : "You lock a fixed-size deposit"} svg={CONFIDENTIAL ? DEPOSIT_CONF : DEPOSIT_FIXED}>
+      </>
+    ) },
+    { key: "deposit", short: "Deposit", when: "same transaction", title: CONFIDENTIAL ? "You lock a confidential deposit" : "You lock a fixed-size deposit", svg: CONFIDENTIAL ? DEPOSIT_CONF : DEPOSIT_FIXED, body: (
+      <>
             {CONFIDENTIAL ? (
               <>Your USDC (to buy) or USTRY (to sell) is wrapped into an OpenZeppelin confidential token, then sent to the
                 auction as a confidential transfer of exactly what the order needs. The amount sits in a Pedersen commitment.
@@ -91,19 +109,25 @@ export function HowItWorks() {
               <>Deposits come in fixed sizes ({sizes}), so escrow shows a bucket, not your order. Visible: your side and
                 deposit size.</>
             )}
-          </Step>
-          <Step n={3} label="reveal" title="Orders are revealed" svg={REVEAL}>
+      </>
+    ) },
+    { key: "reveal", short: "Reveal", when: `${revealMin} min`, title: "Orders are revealed", svg: REVEAL, body: (
+      <>
             In the {revealMin}-minute reveal window your open tab sends your price, quantity and salt
             {CONFIDENTIAL ? ", plus the deposit's amount and blinding" : ""}. The contract checks they match the
             fingerprint{CONFIDENTIAL ? " and the deposit commitment" : ""}, and that the deposit covers the order.
             An order not revealed in time keeps {100 - penalty}% of its deposit ({penalty}% penalty).
-          </Step>
-          <Step n={4} label="close" title="One price for everyone" svg={CLOSE}>
+      </>
+    ) },
+    { key: "close", short: "Close", when: "one transaction", title: "One price for everyone", svg: CLOSE, body: (
+      <>
             At the close the contract finds the single price where the most USTRY can change hands, on a $0.01 grid.
             Every filled order trades at that price, whatever its limit. Buy orders marked standing stay in the book
             for {days} days.
-          </Step>
-          <Step n={5} label="payouts" title="Payouts go only to order owners" svg={PAYOUTS}>
+      </>
+    ) },
+    { key: "payouts", short: "Payouts", when: "after the close", title: "Payouts go only to order owners", svg: PAYOUTS, body: (
+      <>
             {CONFIDENTIAL ? (
               <>Fills and refunds are paid back as confidential tokens. The auction cannot make proofs itself, so a
                 settlement server holds its key and proves each payout; the contract checks every amount against what
@@ -111,14 +135,26 @@ export function HowItWorks() {
             ) : (
               <>Fills and refunds are paid from escrow to each order's owner, in batches anyone can trigger.</>
             )}
-          </Step>
-          <Step n={6} label="publish" title="Price and depth published as an oracle" svg={PUBLISH}>
+      </>
+    ) },
+    { key: "publish", short: "Publish", when: "with the close", title: "Price and depth published as an oracle", svg: PUBLISH, body: (
+      <>
             The close pushes the result to the Fathom oracle (SEP-40). Price: the median of the last {median} clearing
             prices, capped at NAV, published only when an auction has at least $10k traded and 5 orders.
             Depth: standing buy orders within {floor}% of NAV. Pool B caps USTRY collateral at {capShare}% of the lowest
             depth over the last {windowLabel}.
-          </Step>
-        </div>
+      </>
+    ) },
+  ];
+
+  return (
+    <Page minHeight={1080} className="fx">
+      <Header />
+      <PageIntro width={1280} title="How it works" what="What happens to an order, from sealing to the price lenders read."
+        why={<>Every few minutes Fathom runs a sealed-bid auction for USTRY and publishes its result as an oracle. Illustrations use example numbers; the rules are read live from the contracts.</>} />
+      <main style={{ maxWidth: "1280px", margin: "0 auto", padding: "24px", display: "flex", flexDirection: "column", gap: "24px" }}>
+
+        <Walkthrough steps={steps} />
 
         <section aria-label="What is hidden when" style={cardStyle}>
           <h2 style={h2}>What is hidden, and until when</h2>

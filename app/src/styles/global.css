@@ -92,6 +92,8 @@ svg * { transform-box: fill-box; }
 @keyframes flicker { from { transform: scale(1, 1) rotate(-3deg) } to { transform: scale(.92, 1.06) rotate(3deg) } }
 @keyframes smoke { 0%, 86% { opacity: 0; transform: translateY(0) } 89% { opacity: .9 } 98% { opacity: 0; transform: translateY(-24px) } 100% { opacity: 0 } }
 @keyframes candleTag { 0%, 86% { opacity: 0; transform: translateY(6px) } 89%, 97% { opacity: 1; transform: none } 100% { opacity: 0 } }
+@keyframes candleGrow { 0% { transform: scaleY(0); opacity: 0 } 5% { transform: scaleY(1); opacity: 1 } 80% { opacity: 1 } 92%, 100% { transform: scaleY(1); opacity: 0 } }
+@keyframes maDraw { 0% { stroke-dashoffset: 1500; opacity: 1 } 70% { stroke-dashoffset: 0; opacity: 1 } 90%, 100% { stroke-dashoffset: 0; opacity: 0 } }
 @media (max-width: 900px) { .backdrop-gavel { display: none } }
 @keyframes sway { from { transform: translateX(calc(var(--sway) * -1)) rotate(-6deg) } to { transform: translateX(var(--sway)) rotate(6deg) } }
 
