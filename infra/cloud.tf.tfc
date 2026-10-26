@@ -1,0 +1,11 @@
+# Terraform Cloud (HCP Terraform) mode. To use it: cp cloud.tf.tfc cloud.tf, then terraform init.
+# GCP credentials come from dynamic credentials (Workload Identity Federation), set up by
+# infra/bootstrap; the workspace needs the environment variables listed in infra/README.md.
+terraform {
+  cloud {
+    organization = "REPLACE_WITH_YOUR_ORG"
+    workspaces {
+      name = "fathom-infra"
+    }
+  }
+}

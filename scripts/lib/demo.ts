@@ -4,10 +4,10 @@
 // Bot openings (the secrets needed to reveal) are kept in scripts/.state/, gitignored.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { Asset, Horizon, Keypair } from "@stellar/stellar-sdk";
+import { Asset, Keypair } from "@stellar/stellar-sdk";
 import { CONFIG, UNIT } from "../config.js";
 import { auction, client, newSalt, read, Side, txLink, write } from "./fathom.js";
-import { ensureIdentity, ensureTrustlines, horizon, readDeployment, ROOT, topUp, topUpMany } from "./stellar.js";
+import { accountExists, ensureIdentity, ensureTrustlines, readDeployment, ROOT, server, topUp, topUpMany, trustBalance } from "./stellar.js";
 
 export const BOTS = ["alice", "bob", "carol", "dan", "eve", "frank", "grace", "heidi"] as const;
 const BOT_FUNDS = 400_000;
@@ -57,8 +57,7 @@ export async function ensureBots(log: (s: string) => void = () => {}) {
 type AuctionInfo = { id: bigint; commit_end: bigint; reveal_end: bigint; closed: boolean; orders: bigint[] };
 /** Ledger time of the latest closed ledger (what the contract sees as "now"). */
 async function nowSecs(): Promise<bigint> {
-  const { records } = await horizon.ledgers().order("desc").limit(1).call();
-  return BigInt(Math.floor(Date.parse(records[0].closed_at) / 1000));
+  return BigInt((await server.getLatestLedger()).closeTime);
 }
 
 /** Choose the smallest allowed deposit that covers the order. */
@@ -303,14 +302,8 @@ export const ATTACK = { collateral: COLLATERAL, borrow: BORROW, pump: PUMP, atta
 export async function faucet(address: string, amount = 250_000): Promise<Step[]> {
   const issuer = ensureIdentity("fathom-issuer");
   const { ustry, usdc } = assets();
-  let account: Horizon.AccountResponse;
-  try {
-    account = await horizon.loadAccount(address);
-  } catch {
-    throw new Error("account not found on the network: fund it with Friendbot first");
-  }
-  const has = (a: Asset) => account.balances.some((b) => "asset_code" in b && b.asset_code === a.code && b.asset_issuer === a.issuer);
-  if (!has(ustry) || !has(usdc)) throw new Error("add the USTRY and USDC trustlines first");
+  if (!(await accountExists(address))) throw new Error("account not found on the network: fund it with Friendbot first");
+  if ((await trustBalance(address, ustry)) === null || (await trustBalance(address, usdc)) === null) throw new Error("add the USTRY and USDC trustlines first");
   await topUp(issuer, address, ustry, amount);
   await topUp(issuer, address, usdc, amount);
   return [step(`sent up to ${amount.toLocaleString("en-US")} USTRY and USDC`)];

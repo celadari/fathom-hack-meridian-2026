@@ -7,7 +7,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { Asset, BASE_FEE, Horizon, Keypair, Networks, Operation, TransactionBuilder, xdr } from "@stellar/stellar-sdk";
+import { Asset, BASE_FEE, Keypair, Networks, Operation, rpc, TransactionBuilder, xdr } from "@stellar/stellar-sdk";
 
 export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 export const NETWORK = process.env.FATHOM_NETWORK === "local" ? "local" : "testnet";
@@ -18,7 +18,6 @@ export const RPC_URL = process.env.FATHOM_RPC_URL ?? (LOCAL ? "http://localhost:
 export const FRIENDBOT_URL = process.env.FATHOM_FRIENDBOT_URL ?? (LOCAL ? "http://localhost:8000/friendbot" : "https://friendbot.stellar.org");
 /** Plain-HTTP endpoints (local quickstart) must be allowed explicitly. */
 export const ALLOW_HTTP = RPC_URL.startsWith("http://") || HORIZON_URL.startsWith("http://");
-export const horizon = new Horizon.Server(HORIZON_URL, { allowHttp: ALLOW_HTTP });
 
 const DEPLOYMENTS = resolve(ROOT, `deployments/${NETWORK}.json`);
 
@@ -63,40 +62,66 @@ export function ensureIdentity(name: string): Keypair {
   return cache.get(name)!;
 }
 
+// Accounts, trustlines and classic payments go through Soroban RPC, not Horizon: the hosted demo
+// server has IPv6-only egress and horizon-testnet.stellar.org is IPv4-only.
+export const server = new rpc.Server(RPC_URL, { allowHttp: ALLOW_HTTP });
+const notFound = (e: unknown) => /not found/i.test(String((e as Error)?.message ?? e));
+
 async function submit(source: Keypair, ops: xdr.Operation[]) {
   const account = await loadOrFund(source.publicKey());
   const builder = new TransactionBuilder(account, { fee: BASE_FEE, networkPassphrase: PASSPHRASE }).setTimeout(60);
   ops.forEach((op) => builder.addOperation(op));
   const tx = builder.build();
   tx.sign(source);
-  return horizon.submitTransaction(tx);
+  const sent = await server.sendTransaction(tx);
+  if (sent.status === "ERROR") throw new Error(`transaction ${sent.hash} rejected by the network`);
+  const done = await server.pollTransaction(sent.hash, { attempts: 30 });
+  if (done.status !== "SUCCESS") throw new Error(`transaction ${sent.hash} ended ${done.status}`);
+  return { hash: sent.hash };
 }
 
 /** Load an account; on a fresh network (local quickstart, testnet reset) create it with Friendbot first. */
 export async function loadOrFund(address: string) {
   try {
-    return await horizon.loadAccount(address);
+    return await server.getAccount(address);
   } catch (e) {
-    if ((e as { response?: { status?: number } })?.response?.status !== 404) throw e;
+    if (!notFound(e)) throw e;
     await fetch(`${FRIENDBOT_URL}?addr=${address}`);
-    return horizon.loadAccount(address);
+    return server.getAccount(address);
+  }
+}
+
+export async function accountExists(address: string): Promise<boolean> {
+  try {
+    await server.getAccount(address);
+    return true;
+  } catch (e) {
+    if (notFound(e)) return false;
+    throw e;
+  }
+}
+
+/** Trustline balance in whole tokens, or null without a trustline. */
+export async function trustBalance(address: string, asset: Asset): Promise<number | null> {
+  try {
+    return Number((await server.getTrustline(address, asset)).balance) / 1e7;
+  } catch (e) {
+    if (notFound(e)) return null;
+    throw e;
   }
 }
 
 /** Add trustlines for `assets` on `holder`, skipping ones that already exist. */
 export async function ensureTrustlines(holder: Keypair, assets: Asset[]) {
-  const account = await loadOrFund(holder.publicKey());
-  const missing = assets.filter(
-    (a) => !account.balances.some((b) => "asset_code" in b && b.asset_code === a.code && b.asset_issuer === a.issuer),
-  );
+  await loadOrFund(holder.publicKey());
+  const missing = [];
+  for (const a of assets) if ((await trustBalance(holder.publicKey(), a)) === null) missing.push(a);
   if (missing.length) await submit(holder, missing.map((asset) => Operation.changeTrust({ asset })));
 }
 
-/** Top up `to` so it holds at least `amount` (decimal string) of `asset`, paid by `from`. */
+/** Top up `to` so it holds at least `amount` of `asset`, paid by `from`. */
 export async function topUp(from: Keypair, to: string, asset: Asset, amount: number) {
-  const account = await horizon.loadAccount(to);
-  const line = account.balances.find((b) => "asset_code" in b && b.asset_code === asset.code && b.asset_issuer === asset.issuer);
-  const have = line ? Number(line.balance) : 0;
+  const have = (await trustBalance(to, asset)) ?? 0;
   if (have >= amount) return;
   await submit(from, [Operation.payment({ destination: to, asset, amount: (amount - have).toFixed(7) })]);
 }
@@ -105,9 +130,7 @@ export async function topUp(from: Keypair, to: string, asset: Asset, amount: num
 export async function topUpMany(from: Keypair, targets: { to: string; asset: Asset; amount: number }[]) {
   const ops: xdr.Operation[] = [];
   for (const t of targets) {
-    const account = await horizon.loadAccount(t.to);
-    const line = account.balances.find((b) => "asset_code" in b && b.asset_code === t.asset.code && b.asset_issuer === t.asset.issuer);
-    const have = line ? Number(line.balance) : 0;
+    const have = (await trustBalance(t.to, t.asset)) ?? 0;
     if (have < t.amount) ops.push(Operation.payment({ destination: t.to, asset: t.asset, amount: (t.amount - have).toFixed(7) }));
   }
   for (let i = 0; i < ops.length; i += 100) await submit(from, ops.slice(i, i + 100));
