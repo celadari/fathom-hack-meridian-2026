@@ -73,6 +73,8 @@ svg * { transform-box: fill-box; }
 @keyframes proofLine { 0% { stroke-dashoffset: 12 } 50%, 100% { stroke-dashoffset: 0 } }
 @keyframes shackle { 0%, 100% { transform: translateY(-4px) } 50% { transform: none } }
 
+@keyframes flowDash { from { stroke-dashoffset: 24 } to { stroke-dashoffset: 0 } }
+
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important } }
 
 /* ?demo: keep page content clear of the fixed demo bar. */
