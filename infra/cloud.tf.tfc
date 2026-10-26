@@ -3,7 +3,7 @@
 # infra/bootstrap; the workspace needs the environment variables listed in infra/README.md.
 terraform {
   cloud {
-    organization = "REPLACE_WITH_YOUR_ORG"
+    organization = "Hackathon_Meridian_2026"
     workspaces {
       name = "fathom-infra"
     }

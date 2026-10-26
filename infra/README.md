@@ -65,7 +65,8 @@ Sources: [VPC pricing: external IPs](https://cloud.google.com/vpc/pricing-announ
   project IDs are limited to 30 characters) with billing enabled.
 - A Cloudflare account. If you have never used Workers, open **Workers & Pages** once so the account
   gets its `workers.dev` subdomain (Settings → Subdomain); you need that name below.
-- A Cloudflare API token (My Profile → API Tokens → Create Token → Custom), account-level permissions:
+- A Cloudflare API token (https://dash.cloudflare.com/profile/api-tokens → Create Token → Create Custom Token; it is under
+  your *profile*, not the account settings; a new account must verify its email first), account-level permissions:
   **Cloudflare Pages · Edit**, **Cloudflare Tunnel · Edit**, **Workers Scripts · Edit**,
   **Connectivity Directory · Admin** (Workers VPC services). No zone permissions: there is no domain.
 - An HCP Terraform organization.
@@ -86,7 +87,7 @@ terraform init
 terraform apply \
   -var project_id="$PROJECT_ID" \
   -var billing_account_id="$(gcloud billing projects describe "$PROJECT_ID" --format='value(billingAccountName)' | cut -d/ -f2)" \
-  -var tfc_organization=YOUR_TFC_ORG          # or -var enable_tfc=false if you only run locally
+  -var tfc_organization=Hackathon_Meridian_2026
 ```
 
 ### 2. Infra on Terraform Cloud
@@ -98,7 +99,7 @@ terraform apply \
      (`TFC_GCP_PROVIDER_AUTH=true`, `TFC_GCP_RUN_SERVICE_ACCOUNT_EMAIL`, `TFC_GCP_WORKLOAD_PROVIDER_NAME`),
      and `CLOUDFLARE_API_TOKEN`, marked **sensitive**.
    - Terraform: `project_id`, `cloudflare_account_id`, `workers_dev_subdomain`.
-3. `cp cloud.tf.tfc cloud.tf`, set your organization in it, then:
+3. `cp cloud.tf.tfc cloud.tf` (organization `Hackathon_Meridian_2026`), then:
 
 ```bash
 cd infra

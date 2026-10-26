@@ -23,7 +23,7 @@ variable "enable_tfc" {
 variable "tfc_organization" {
   description = "HCP Terraform organization allowed to impersonate the Terraform service account."
   type        = string
-  default     = ""
+  default     = "Hackathon_Meridian_2026"
 }
 
 variable "tfc_project" {
