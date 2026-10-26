@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="200" viewBox="0 0 880 200">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="0%" r="90%"><stop offset="0" stop-color="#FFEFFF"/><stop offset="1" stop-color="#FFFFFF"/></radialGradient>
+  </defs>
+  <rect width="880" height="200" rx="28" fill="url(#bg)"/>
+  <g transform="translate(110 100)" fill="none" stroke="#FC72FF" stroke-width="5">
+    <circle r="54" opacity="0.18"/>
+    <circle r="36" opacity="0.32"/>
+    <circle r="21" opacity="0.6"/>
+    <circle r="8" fill="#FC72FF"/>
+  </g>
+  <text x="200" y="104" font-family="Inter, -apple-system, Segoe UI, Helvetica, Arial, sans-serif" font-size="64" font-weight="700" fill="#FC72FF">Fathom</text>
+  <text x="203" y="146" font-family="Inter, -apple-system, Segoe UI, Helvetica, Arial, sans-serif" font-size="22" fill="#4A4A4A">Sealed auctions: a price lenders can trust, and the depth behind it.</text>
+</svg>
