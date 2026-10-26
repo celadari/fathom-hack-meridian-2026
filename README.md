@@ -72,8 +72,10 @@ Two things were missing:
 
 ## The idea
 
-**Fathom runs a sealed-bid auction for the asset every few minutes, and publishes its result as an
-oracle.**
+**Fathom runs a sealed-bid auction for the asset daily\*, and publishes its result as an oracle.**
+
+<sub>\*For the sake of the demo, our testnet implementation runs auctions every 10 minutes (8-minute
+order window + 2-minute reveal, `scripts/config.ts`).</sub>
 
 - Orders are **sealed**: price and quantity stay hidden while orders are being placed (until each
   order's reveal, after the order window has closed), so nobody can trade against
@@ -81,8 +83,8 @@ oracle.**
 - Everyone fills at **one uniform price**, the one where the most can trade.
 - The oracle publishes a **price**: the median of the last 7 clearing prices, capped at NAV, and only
   when an auction had real participation (≥ $10k traded, ≥ 5 orders).
-- It also publishes **depth**: standing buy orders, locked for 7 days, within 5% of NAV. Selling into
-  your own order fills it and removes it, so **depth can only be faked downwards**.
+- It also publishes **depth**: buy orders left unfilled, locked 7 days (within 5% of NAV). **Self-trading
+  can only lower it**: selling into your own order fills it and removes it.
 - Lenders read both through a standard **SEP-40** feed. Our demo Pool B values collateral at Fathom's
   price and caps how much USTRY it accepts at 50% of the lowest depth over a window.
 
@@ -515,7 +517,7 @@ release URL; download it directly:
 | **Commitment / fingerprint** | A hash (Poseidon2) of the order with a random salt; it binds you to the order without showing it. |
 | **Uniform price** | Every filled order trades at the same clearing price, whatever its limit. |
 | **Standing order** | A buy order locked for 7 days that stays in the book across auctions. Only these count as depth. |
-| **Depth** | How much USTRY could be sold near NAV: standing buy orders within 5% of NAV. |
+| **Depth** | How much USTRY could be sold near NAV: buy orders left unfilled, locked 7 days, within 5% of NAV. Self-trading can only lower it. |
 | **SEP-40** | Stellar's standard oracle interface (`lastprice`, `price`, …), used by lending protocols such as Blend. |
 | **Confidential token** | An OpenZeppelin token whose balances and transfer amounts are Pedersen commitments. |
 | **Pedersen commitment** | `amount·G + blinding·H` on the Grumpkin curve: hides an amount, opened by disclosing amount and blinding. |

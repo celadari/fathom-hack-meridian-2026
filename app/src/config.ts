@@ -31,6 +31,8 @@ export const IDS = {
  * transfers of OpenZeppelin confidential tokens wrapping USDC/USTRY, of any amount.
  */
 export const CONFIDENTIAL = env.VITE_CONFIDENTIAL_DEPOSITS === "true";
+/** Demo auction length in minutes: order window + reveal (scripts/config.ts period_secs + reveal_secs). Production: daily. */
+export const DEMO_AUCTION_MIN = CONFIDENTIAL ? (480 + 120) / 60 : (180 + 60) / 60;
 export const CONF = {
   usdc: env.VITE_CONF_USDC as string,
   ustry: env.VITE_CONF_USTRY as string,

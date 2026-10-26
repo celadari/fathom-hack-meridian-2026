@@ -4,6 +4,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import { NAV_TITLE, SetByUs } from "../components/SetByUs";
 import { Header, Page } from "../components/Header";
+import { CadenceNote } from "../components/CadenceNote";
 import { PageIntro } from "../components/PageIntro";
 import { Slice } from "../components/State";
 import type { LiquidityStatus, LiquidityView as LiquidityData } from "../data/types";
@@ -48,6 +49,7 @@ export function Liquidity() {
       <Header />
       <PageIntro width={1360} pad={32} title="Price & depth" what="What Fathom publishes for lenders: a robust USTRY price and how much can really be sold near NAV." why="Lenders cap how much USTRY they accept by this depth, so a thin market cannot be used to borrow too much." />
       <Slice of={liquidity} label="published liquidity" minHeight={400}>{(l) => <LiquidityView key={l.history.at(-1)?.auction ?? 0} l={l} />}</Slice>
+      <CadenceNote width={1360} />
     </Page>
   );
 }
@@ -85,7 +87,7 @@ function LiquidityView({ l }: { l: LiquidityData }) {
         <Answer delay={0} icon={I_PRICE} q="What is USTRY worth?" value={priced ? fmtUsd(l.price) : "Not published"}
           means={priced ? <>Median of the last {l.medianWindow} auctions · {fmtPct(l.haircutPct)} under NAV {fmtUsd(l.nav)} <SetByUs title={NAV_TITLE} /></> : "Too few orders in recent auctions to publish a price."} />
         <Answer delay={0.1} icon={I_DEPTH} q="How much can be sold near NAV?" value={fmtInt(l.depth)} unit={l.asset}
-          means={<>{fmtInt(l.standingOrders)} standing buy orders, locked {l.standingDays} days, priced within {l.depthFloorPct}% of NAV.</>} />
+          means={<>{fmtInt(l.standingOrders)} buy orders left unfilled, locked {l.standingDays} days, within {l.depthFloorPct}% of NAV. Self-trading can only lower it.</>} />
         <Answer delay={0.2} icon={I_CAP} q={`How much more can Pool B take?`} value={fmtInt(left)} unit={l.asset}
           means={l.poolB.cap === 0 ? `No depth yet, so Pool B accepts no new ${l.asset}.` : <>Cap {fmtInt(l.poolB.cap)} = {l.poolB.capSharePct}% of the lowest depth (last {l.depthWindowLabel}) · {fmtInt(l.poolB.used)} used.</>} />
       </div>
@@ -120,7 +122,7 @@ function LiquidityView({ l }: { l: LiquidityData }) {
         <h2 style={h2}>How lenders use it</h2>
         <svg viewBox="0 0 1240 150" role="img" aria-label="Auctions feed the Fathom oracle, which lenders read for price and depth" style={{ width: "100%", height: "auto" }}>
           {[
-            { x: 130, t: "Sealed auctions", s: "every few minutes" },
+            { x: 130, t: "Sealed auctions", s: "daily*" },
             { x: 620, t: "Fathom oracle", s: priced ? `${fmtUsd(l.price)} · depth ${fmtInt(l.depth)}` : `depth ${fmtInt(l.depth)}` },
           ].map((b) => (
             <g key={b.t} transform={`translate(${b.x} 75)`}>

@@ -9,6 +9,7 @@ import { VerifierDemo } from "../zk/VerifierDemo";
 import { usePresenter } from "../demo/api";
 import { useFathom } from "../data/useFathom";
 import { fmtK } from "../lib/format";
+import { CadenceNote } from "../components/CadenceNote";
 
 const cardStyle: CSSProperties = { background: "#FFFFFF", border: "1px solid #F0F0F0", borderRadius: "24px", padding: "20px", display: "flex", flexDirection: "column", gap: "12px" };
 const art: CSSProperties = { width: "100%", height: "auto", background: "#F9F9F9", borderRadius: "16px" };
@@ -143,7 +144,7 @@ export function HowItWorks() {
       <>
             The close pushes the result to the Fathom oracle (SEP-40). Price: the median of the last {median} clearing
             prices, capped at NAV, published only when an auction has at least $10k traded and 5 orders.
-            Depth: standing buy orders within {floor}% of NAV. Pool B caps USTRY collateral at {capShare}% of the lowest
+            Depth: buy orders left unfilled, locked {days} days, within {floor}% of NAV. Self-trading can only lower it. Pool B caps USTRY collateral at {capShare}% of the lowest
             depth over the last {windowLabel}.
       </>
     ) },
@@ -153,7 +154,7 @@ export function HowItWorks() {
     <Page minHeight={1080} className="fx">
       <Header />
       <PageIntro width={1280} title="How it works" what="What happens to an order, from sealing to the price lenders read."
-        why={<>Every few minutes Fathom runs a sealed-bid auction for USTRY and publishes its result as an oracle. Illustrations use example numbers; the rules are read live from the contracts.</>} />
+        why={<>Fathom runs a sealed-bid auction for USTRY daily* and publishes its result as an oracle. Illustrations use example numbers; the rules are read live from the contracts.</>} />
       <main style={{ maxWidth: "1280px", margin: "0 auto", padding: "24px", display: "flex", flexDirection: "column", gap: "24px" }}>
 
         <Walkthrough steps={steps} />
@@ -204,7 +205,7 @@ export function HowItWorks() {
       </svg>
           <div style={{ flex: "1 1 300px", display: "flex", flexDirection: "column", gap: "6px" }}>
             <span style={{ fontWeight: 600, fontSize: "17px" }}>Why depth can't be faked</span>
-            <span style={{ fontSize: "14px", color: "#4A4A4A" }}>Depth only counts buy orders locked for {days} days. Selling into your own order fills it and removes it from the book, so self-trading can only make depth smaller, never bigger. And lenders use the lowest depth over a window, so a short burst of orders does not count.</span>
+            <span style={{ fontSize: "14px", color: "#4A4A4A" }}>Buy orders left unfilled, locked {days} days. Self-trading can only lower it: selling into your own order fills it and removes it from the book. And lenders use the lowest depth over a window, so a short burst of orders does not count.</span>
           </div>
         </section>
 
@@ -220,6 +221,7 @@ export function HowItWorks() {
 
         {(VERIFIER_DEMO || presenter) && <VerifierDemo />}
       </main>
+      <CadenceNote width={1280} />
     </Page>
   );
 }
