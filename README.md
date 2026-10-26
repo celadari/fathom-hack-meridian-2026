@@ -193,7 +193,9 @@ before this feature.
   recorded amount with one proved transfer, one at a time; unpaid auctions are kept in its state and
   resumed after a restart.
 - **Timing:** auctions run 8 minutes (+2 to reveal), because each payout needs a proof. Measured: ~1.5 s
-  per proof on a laptop; on the e2-micro 3.6 s while it has CPU credit, ~22 s once throttled.
+  per proof on a laptop. On the e2-micro, 3.5 s per proof in the hosted loop (auction #6: 8 payouts proved
+  and paid in ~90 s); a back-to-back benchmark hit CPU throttling at ~22 s per proof, which 8 minutes still
+  absorbs.
 
 Testnet run with the flag on (browser, burner wallet): confidential seal
 [7229e7c6…](https://stellar.expert/explorer/testnet/tx/7229e7c61cde53f5ebb4dda9e455355d50d74ab0ff2310f8bed7d051fb412866),
