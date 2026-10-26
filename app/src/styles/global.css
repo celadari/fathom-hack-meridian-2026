@@ -82,6 +82,16 @@ svg * { transform-box: fill-box; }
 @keyframes gavelStrike { 0%, 60% { transform: rotate(24deg) } 66% { transform: rotate(30deg) } 74% { transform: rotate(0) } 79% { transform: rotate(7deg) } 84%, 88% { transform: rotate(0) } 100% { transform: rotate(24deg) } }
 @keyframes gavelRing { 0%, 73% { transform: scale(.4); opacity: 0 } 75% { opacity: 1 } 100% { transform: scale(2.2); opacity: 0 } }
 @keyframes clearedTag { 0%, 74% { transform: scale(0) translateY(10px); opacity: 0 } 80% { transform: scale(1.1); opacity: 1 } 84%, 94% { transform: scale(1); opacity: 1 } 100% { transform: translateY(-8px); opacity: 0 } }
+@keyframes coinSpin { 0%, 100% { transform: scaleX(1) } 25% { transform: scaleX(.08) } 50% { transform: scaleX(1) } 75% { transform: scaleX(.08) } }
+@keyframes faceA { 0% { opacity: 1 } 25% { opacity: 0 } 75% { opacity: 1 } }
+@keyframes faceB { 0% { opacity: 0 } 25% { opacity: 1 } 75% { opacity: 0 } }
+/* candle: wax 88 → 30 px tall over the cycle; the flame rides the top, goes out at 86%, relights at 100% */
+@keyframes waxBurn { 0% { transform: scaleY(1) } 86%, 99.9% { transform: scaleY(.34) } 100% { transform: scaleY(1) } }
+@keyframes flameRide { 0% { transform: translateY(0) } 86%, 99.9% { transform: translateY(58px) } 100% { transform: translateY(0) } }
+@keyframes flameLife { 0%, 84% { transform: scale(1); opacity: 1 } 87%, 97% { transform: scale(0); opacity: 0 } 100% { transform: scale(1); opacity: 1 } }
+@keyframes flicker { from { transform: scale(1, 1) rotate(-3deg) } to { transform: scale(.92, 1.06) rotate(3deg) } }
+@keyframes smoke { 0%, 86% { opacity: 0; transform: translateY(0) } 89% { opacity: .9 } 98% { opacity: 0; transform: translateY(-24px) } 100% { opacity: 0 } }
+@keyframes candleTag { 0%, 86% { opacity: 0; transform: translateY(6px) } 89%, 97% { opacity: 1; transform: none } 100% { opacity: 0 } }
 @media (max-width: 900px) { .backdrop-gavel { display: none } }
 @keyframes sway { from { transform: translateX(calc(var(--sway) * -1)) rotate(-6deg) } to { transform: translateX(var(--sway)) rotate(6deg) } }
 

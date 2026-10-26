@@ -1,6 +1,7 @@
 // Animated background for the Trade page: drifting color, sonar pulses from behind the widget,
-// sealed envelopes and bid paddles rising like bubbles, and an auctioneer's gavel that strikes
-// "cleared" every few seconds. Decorative only (aria-hidden, no pointer events);
+// sealed envelopes, bid paddles and privacy coins (they spin from "$" to a padlock) rising like
+// bubbles, an auctioneer's gavel that strikes "cleared" every few seconds, and a candle auction
+// candle that burns down, goes out (bidding ends) and relights. Decorative only (aria-hidden, no pointer events);
 // prefers-reduced-motion turns every animation off (global.css).
 
 // Deterministic layout: [x %, size px, duration s, delay s, sway px].
@@ -16,6 +17,9 @@ const BUBBLES: [number, number, number, number][] = [
 
 // Bid paddles: [x %, paddle number, duration s, delay s].
 const PADDLES: [number, number, number, number][] = [[10, 12, 24, 4], [35, 7, 28, 14], [64, 21, 26, 9], [88, 3, 25, 18]];
+
+// Privacy coins: [x %, size px, duration s, delay s].
+const COINS: [number, number, number, number][] = [[18, 30, 21, 3], [42, 24, 25, 12], [58, 28, 23, 7], [80, 26, 22, 16], [8, 22, 26, 10]];
 
 export function TradeBackdrop() {
   return (
@@ -39,6 +43,46 @@ export function TradeBackdrop() {
           </svg>
         </div>
       ))}
+      {COINS.map(([x, size, dur, delay]) => (
+        <div key={`c${x}`} style={{ position: "absolute", left: `${x}%`, bottom: "-50px", animation: `rise ${dur}s linear ${-delay}s infinite`, opacity: 0.6 }}>
+          <svg width={size} height={size + 14} viewBox="0 0 32 46" style={{ display: "block", overflow: "visible" }}>
+            <g style={{ transformBox: "fill-box", transformOrigin: "center", animation: `coinSpin 3.2s ease-in-out ${-delay / 4}s infinite` }}>
+              <circle cx="16" cy="16" r="14" fill="#FFEFFF" stroke="#FC72FF" strokeWidth="2" />
+              <circle cx="16" cy="16" r="10" fill="none" stroke="#FC72FF" strokeWidth="1" opacity=".5" />
+              <text x="16" y="21" textAnchor="middle" fontSize="13" fontWeight="700" fill="#FC72FF" style={{ animation: `faceA 3.2s steps(1) ${-delay / 4}s infinite` }}>$</text>
+              <g style={{ animation: `faceB 3.2s steps(1) ${-delay / 4}s infinite` }}>
+                <path d="M12.5 15 v-2.5 a3.5 3.5 0 0 1 7 0 V15" fill="none" stroke="#FC72FF" strokeWidth="1.8" />
+                <rect x="11" y="15" width="10" height="7.5" rx="1.8" fill="#FC72FF" />
+              </g>
+            </g>
+            <text x="16" y="42" textAnchor="middle" fontSize="9" fill="#FC72FF" letterSpacing="1">••••</text>
+          </svg>
+        </div>
+      ))}
+      <div className="backdrop-gavel" style={{ position: "absolute", left: "5%", bottom: "8%", width: "120px", height: "200px", opacity: 0.65 }}>
+        {/* Candle auction: bidding lasts until the candle goes out */}
+        <svg viewBox="0 0 120 200" width="120" height="200" style={{ overflow: "visible" }}>
+          <ellipse cx="60" cy="188" rx="44" ry="8" fill="#FFD6FF" />
+          <rect x="30" y="178" width="60" height="10" rx="5" fill="#FFFFFF" stroke="#FC72FF" strokeWidth="2" />
+          {/* wax burns down (scaleY from the base); wick and flame ride on top */}
+          <g style={{ transformBox: "fill-box", transformOrigin: "50% 100%", animation: "waxBurn 14s linear infinite" }}>
+            <rect x="44" y="90" width="32" height="88" rx="6" fill="#FFFFFF" stroke="#FC72FF" strokeWidth="2" />
+            <path d="M44 100 q6 10 10 0 q5 14 10 0 q5 8 12 0" fill="none" stroke="#FFD6FF" strokeWidth="3" />
+          </g>
+          <g style={{ animation: "flameRide 14s linear infinite" }}>
+            <line x1="60" y1="90" x2="60" y2="82" stroke="#131313" strokeWidth="2" strokeLinecap="round" />
+            <g style={{ transformBox: "fill-box", transformOrigin: "50% 100%", animation: "flameLife 14s linear infinite" }}>
+              <path d="M60 50 C 72 66, 70 80, 60 84 C 50 80, 48 66, 60 50 Z" fill="#FC72FF" style={{ transformBox: "fill-box", transformOrigin: "50% 100%", animation: "flicker .35s ease-in-out infinite alternate" }} />
+              <path d="M60 64 C 65 72, 64 79, 60 81 C 56 79, 55 72, 60 64 Z" fill="#FFFFFF" />
+            </g>
+            <path d="M60 80 c-6 -10 6 -16 0 -26 c-6 -10 6 -14 0 -22" fill="none" stroke="#B5B5B5" strokeWidth="2" strokeLinecap="round" style={{ animation: "smoke 14s linear infinite" }} />
+            <g style={{ animation: "candleTag 14s linear infinite" }}>
+              <rect x="0" y="20" width="96" height="24" rx="12" fill="#131313" />
+              <text x="48" y="36" textAnchor="middle" fontSize="12" fontWeight="700" fill="#FFFFFF">Candle out</text>
+            </g>
+          </g>
+        </svg>
+      </div>
       <div className="backdrop-gavel" style={{ position: "absolute", right: "6%", bottom: "8%", width: "190px", height: "170px", opacity: 0.6 }}>
         <svg viewBox="0 0 190 170" width="190" height="170" style={{ overflow: "visible" }}>
           {/* impact ring and "Cleared" tag, on each strike */}
