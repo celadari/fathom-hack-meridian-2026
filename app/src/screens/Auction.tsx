@@ -7,7 +7,7 @@ import { useEffect, useState, type CSSProperties } from "react";
 import { Link } from "react-router";
 import { FundingPanel, useAccount } from "../components/Funding";
 import { Header, Page } from "../components/Header";
-import { ConfidentialScene } from "../components/ConfidentialScene";
+import { ConfidentialScene, StageHero } from "../components/ConfidentialScene";
 import { MyOrdersPanel } from "../components/MyOrdersPanel";
 import { NAV_TITLE, SetByUs } from "../components/SetByUs";
 import { Slice } from "../components/State";
@@ -181,19 +181,24 @@ function AuctionRoom({ a }: { a: AuctionView }) {
         )}
         {progress && (
           <div aria-live="polite" style={{ display: "flex", flexDirection: "column", gap: "12px", background: "#F9F9F9", borderRadius: "20px", padding: "16px", marginTop: "4px" }}>
+            {CONFIDENTIAL && progress.stages.length > 0 && !locked && p?.step !== "error" ? (
+              // While a confidential step runs, its own animation replaces the envelope.
+              <StageHero stages={progress.stages} token={lockTok} />
+            ) : (
             <svg viewBox="0 0 440 120" role="img" aria-label="Order sealed into an envelope and locked" style={{ width: "100%", height: "auto" }}>
-              <g style={{ animation: "slideInto .9s ease-in .1s both" }}><rect x="20" y="35" width="110" height="50" rx="12" fill="#FFFFFF" stroke="#F0F0F0" /><text x="75" y="66" textAnchor="middle" fontSize="14" fontWeight="600" fill="#131313">{progress.text}</text></g>
-              <g transform="translate(170 18)">
-                <rect x="0" y="14" width="100" height="66" rx="8" fill="#FFFFFF" stroke="#FC72FF" strokeWidth="2" />
-                <path d="M0 14 L50 50 L100 14" fill="#FFEFFF" stroke="#FC72FF" strokeWidth="2" style={{ transformOrigin: "50% 0%", animation: "flapClose .4s ease-out 1s both" }} />
-                {locked && <g className="pop"><rect x="40" y="50" width="20" height="16" rx="3" fill="#FC72FF" /><path d="M44 50 v-5 a6 6 0 0 1 12 0 v5" fill="none" stroke="#FC72FF" strokeWidth="2.5" /></g>}
-              </g>
-              {proofMs !== null ? (
-                <g className="pop" transform="translate(330 22)"><circle cx="40" cy="40" r="34" fill="#EEF9F1" /><path d="M24 41 l10 10 l22 -22" fill="none" stroke="#40B66B" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" /></g>
-              ) : (
-                <g transform="translate(330 22)"><circle cx="40" cy="40" r="34" fill="none" stroke="#D9D9D9" strokeWidth="2" strokeDasharray="4 6" /><text x="40" y="45" textAnchor="middle" fontSize="13" fill="#B5B5B5">ZK</text></g>
-              )}
-            </svg>
+                <g style={{ animation: "slideInto .9s ease-in .1s both" }}><rect x="20" y="35" width="110" height="50" rx="12" fill="#FFFFFF" stroke="#F0F0F0" /><text x="75" y="66" textAnchor="middle" fontSize="14" fontWeight="600" fill="#131313">{progress.text}</text></g>
+                <g transform="translate(170 18)">
+                  <rect x="0" y="14" width="100" height="66" rx="8" fill="#FFFFFF" stroke="#FC72FF" strokeWidth="2" />
+                  <path d="M0 14 L50 50 L100 14" fill="#FFEFFF" stroke="#FC72FF" strokeWidth="2" style={{ transformOrigin: "50% 0%", animation: "flapClose .4s ease-out 1s both" }} />
+                  {locked && <g className="pop"><rect x="40" y="50" width="20" height="16" rx="3" fill="#FC72FF" /><path d="M44 50 v-5 a6 6 0 0 1 12 0 v5" fill="none" stroke="#FC72FF" strokeWidth="2.5" /></g>}
+                </g>
+                {proofMs !== null ? (
+                  <g className="pop" transform="translate(330 22)"><circle cx="40" cy="40" r="34" fill="#EEF9F1" /><path d="M24 41 l10 10 l22 -22" fill="none" stroke="#40B66B" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" /></g>
+                ) : (
+                  <g transform="translate(330 22)"><circle cx="40" cy="40" r="34" fill="none" stroke="#D9D9D9" strokeWidth="2" strokeDasharray="4 6" /><text x="40" y="45" textAnchor="middle" fontSize="13" fill="#B5B5B5">ZK</text></g>
+                )}
+              </svg>
+            )}
             {CONFIDENTIAL && progress.stages.length > 0 && (
               <ConfidentialScene stages={progress.stages} locked={locked} failed={p?.step === "error"} token={lockTok} />
             )}

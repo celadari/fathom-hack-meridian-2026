@@ -56,6 +56,17 @@ svg * { transform-box: fill-box; }
 .bars rect:nth-child(6) { animation-delay: .5s } .bars rect:nth-child(7) { animation-delay: .6s }
 
 /* Confidential deposit stations (components/ConfidentialScene.tsx) */
+/* Confidential step heroes (StageHero) */
+@keyframes chDraw { 0% { stroke-dashoffset: 200 } 55%, 100% { stroke-dashoffset: 0 } }
+@keyframes chFlow { from { stroke-dashoffset: 22 } to { stroke-dashoffset: 0 } }
+@keyframes chPop { 0%, 45% { transform: scale(0); opacity: 0 } 60% { transform: scale(1.12); opacity: 1 } 70%, 100% { transform: scale(1); opacity: 1 } }
+@keyframes chCoinIn { 0%, 10% { transform: translateX(0); opacity: 1 } 50%, 100% { transform: translateX(150px) scale(.4); opacity: 0 } }
+@keyframes chGlow { 0%, 35% { stroke-width: 2 } 50% { stroke-width: 5 } 65%, 100% { stroke-width: 2 } }
+@keyframes chCoinOut { 0%, 50% { transform: translateX(-150px) scale(.4); opacity: 0 } 80%, 100% { transform: none; opacity: 1 } }
+@keyframes chLine { 0% { stroke-dashoffset: 90 } 40%, 100% { stroke-dashoffset: 0 } }
+@keyframes chCheck { 0%, 55% { stroke-dashoffset: 45 } 80%, 100% { stroke-dashoffset: 0 } }
+@keyframes chDrop { 0%, 10% { transform: none; opacity: 1 } 55% { transform: translate(150px, 34px) scale(.7); opacity: 1 } 65%, 100% { transform: translate(150px, 40px) scale(.5); opacity: 0 } }
+@keyframes chShackle { 0%, 55% { transform: translateY(-6px) } 70%, 100% { transform: none } }
 @keyframes stationRing { 0% { transform: scale(1); opacity: .9 } 100% { transform: scale(1.45); opacity: 0 } }
 @keyframes keyTurn { 0%, 100% { transform: rotate(0) } 50% { transform: rotate(-35deg) } }
 @keyframes coinWrap { 0% { transform: translateY(-14px); opacity: 0 } 35%, 70% { transform: none; opacity: 1 } 100% { transform: translateY(4px) scale(.85); opacity: .6 } }
