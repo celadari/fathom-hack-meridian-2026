@@ -138,8 +138,8 @@ function ReplayRoom({ r }: { r: ReplayView }) {
     },
     {
       short: "Pool B", title: "Pool B uses Fathom and says no",
-      body: <>Pool B values the collateral at Fathom's price, the median of the last {medianWindow} sealed auctions, which one DEX trade cannot move: {fmtInt(r.collateral)} × {fmtUsd(r.fathomPrice)} = <b>{fmtUsd(bValue, 0)}</b>, so at most {fmtUsd(bValue * ltv, 0)}. It also caps how much {base} it accepts by Fathom's depth. <b>Rejected</b>{live ? ", and the rejection is recorded on-chain." : ". When the replay runs live on testnet, the rejection is recorded on-chain."}{reasons.length > 0 && <ul style={{ margin: "8px 0 0", paddingLeft: "18px" }}>{reasons.map((t) => <li key={t}>{t}</li>)}</ul>}</>,
-      art: <ArtMath tone="good" lines={[`${fmtInt(r.collateral)} × ${fmtUsd(r.fathomPrice)}`, `= ${fmtUsd(bValue, 0)} collateral`, `× ${r.ltvPct}% = ${fmtUsd(bValue * ltv, 0)} max`]} verdict="Borrow rejected" />, link: links.poolB,
+      body: <>Pool B values the collateral at Fathom's price, the median of the last {medianWindow} sealed auctions, which one DEX trade cannot move: {fmtInt(r.collateral)} × {fmtUsd(r.fathomPrice)} = <b>{fmtUsd(bValue, 0)}</b>, so at most {fmtUsd(bValue * ltv, 0)}. It also caps how much {base} it accepts by Fathom's depth: <b>cap {fmtInt(a.cap)} {base}</b> ({r.capSharePct}% of the lowest depth, {fmtInt(a.minDepthWindow)}). <b>Rejected</b>{live ? ", and the rejection is recorded on-chain." : ". When the replay runs live on testnet, the rejection is recorded on-chain."}{reasons.length > 0 && <ul style={{ margin: "8px 0 0", paddingLeft: "18px" }}>{reasons.map((t) => <li key={t}>{t}</li>)}</ul>}</>,
+      art: <ArtMath tone="good" lines={[`${fmtInt(r.collateral)} × ${fmtUsd(r.fathomPrice)}`, `= ${fmtUsd(bValue, 0)} collateral`, `× ${r.ltvPct}% = ${fmtUsd(bValue * ltv, 0)} max`]} verdict="Borrow rejected" note={`Depth cap: ${fmtInt(a.cap)} ${base}`} />, link: links.poolB,
     },
     {
       short: "Outcome", title: "Same attack, two outcomes",
@@ -281,7 +281,7 @@ function ArtAsk({ qty, borrow }: { qty: string; borrow: string }) {
   );
 }
 
-function ArtMath({ lines, verdict, tone }: { lines: string[]; verdict: string; tone: "good" | "bad" }) {
+function ArtMath({ lines, verdict, tone, note }: { lines: string[]; verdict: string; tone: "good" | "bad"; note?: string }) {
   const [c, bg] = TONE[tone];
   return (
     <svg viewBox="0 0 560 220" role="img" aria-label={`${lines.join(" ")}: ${verdict}`} style={ART}>
@@ -291,6 +291,7 @@ function ArtMath({ lines, verdict, tone }: { lines: string[]; verdict: string; t
           <text className="fade" style={{ animationDelay: `${0.2 + i * 0.5}s` }} fontSize={i === 0 ? 20 : 18} fontWeight={i === 2 ? 700 : 500} fill="#131313">{t}</text>
         </g>
       ))}
+      {note && <text className="fade" style={{ animationDelay: "1.6s" }} x="60" y="214" fontSize="14" fontWeight="600" fill={c}>{note}</text>}
       <g transform="translate(450 110)">
         <g className="pop" style={{ transformBox: "fill-box", animationDelay: "1.8s" }}>
           <circle r="62" fill={bg} stroke={c} strokeWidth="3" />

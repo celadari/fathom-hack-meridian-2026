@@ -1,0 +1,5 @@
+node_modules/
+out/
+recorder/.wallet-state.json
+public/clips/*.webm
+public/clips/.tmp-*

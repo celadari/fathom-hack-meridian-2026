@@ -1,0 +1,176 @@
+{
+  "a": {
+    "marks": {
+      "ready": 5.767,
+      "filled": 8.824,
+      "sealClicked": 9.821,
+      "sealed": 13.182,
+      "proved": 23.05,
+      "keys": 23.463,
+      "register": 38.33,
+      "wrap": 48.195,
+      "prove": 56.047,
+      "locking": 60.173,
+      "locked": 65.927,
+      "end": 67.197
+    },
+    "boxes": {
+      "modal": {
+        "x": 710,
+        "y": 157.734375,
+        "width": 500,
+        "height": 764.53125,
+        "t": 67.156
+      },
+      "lockLine": {
+        "x": 750,
+        "y": 806.265625,
+        "width": 440,
+        "height": 34,
+        "t": 67.186
+      }
+    },
+    "values": {
+      "auction": "29",
+      "qty": "20000",
+      "limit": "1.040",
+      "lockLine": "Confidential USDC deposit locked for 7 days · price and quantity hidden · stellar.expert"
+    }
+  },
+  "b": {
+    "marks": {
+      "ready": 5.77,
+      "end": 10.323
+    },
+    "boxes": {
+      "sealedRow": {
+        "x": 591,
+        "y": 804.5625,
+        "width": 135,
+        "height": 20,
+        "t": 5.809
+      },
+      "depth": {
+        "x": 820.65625,
+        "y": 658.5625,
+        "width": 278.671875,
+        "height": 68,
+        "t": 5.822
+      }
+    },
+    "values": {
+      "depth": "Depth\n35.3K",
+      "sealedCount": "Sealed orders\n7",
+      "auction": "29"
+    }
+  },
+  "c": {
+    "marks": {
+      "ready": 4.29,
+      "nextClicked": 5.998,
+      "banner": 40.107,
+      "results": 46.899,
+      "end": 49.458
+    },
+    "boxes": {
+      "clearing": {
+        "x": 280,
+        "y": 233,
+        "width": 561,
+        "height": 34,
+        "t": 46.913
+      }
+    },
+    "values": {
+      "auction": "29",
+      "clearing": "Orders revealed. Everyone trades at $1.05",
+      "resultsAuction": "29"
+    }
+  },
+  "d": {
+    "marks": {
+      "ready": 10.919,
+      "cardsDone": 17.702,
+      "end": 20.757
+    },
+    "boxes": {
+      "price": {
+        "x": 280,
+        "y": 248,
+        "width": 442.65625,
+        "height": 167.453125,
+        "t": 10.964
+      },
+      "depth": {
+        "x": 738.65625,
+        "y": 248,
+        "width": 442.671875,
+        "height": 167.453125,
+        "t": 10.978
+      },
+      "cap": {
+        "x": 1197.328125,
+        "y": 248,
+        "width": 442.671875,
+        "height": 167.453125,
+        "t": 10.994
+      },
+      "meter": {
+        "x": 280,
+        "y": 15.453125,
+        "width": 1360,
+        "height": 177,
+        "t": 20.757
+      }
+    },
+    "values": {
+      "price": "What is USTRY worth?\n$1.04\nMedian of the last 7 auctions · 1.9% under NAV $1.06 demo feed (set by us)",
+      "depth": "How much can be sold near NAV?\n55,262USTRY\n10 standing buy orders, locked 7 days, priced within 5% of NAV.",
+      "cap": "How much more can Pool B take?\n17,631USTRY\nCap 17,631 = 50% of the lowest depth (last 30 min) · 0 used."
+    }
+  },
+  "e": {
+    "marks": {
+      "ready": 7.942,
+      "step2": 98.562,
+      "step3": 112.274,
+      "step4": 256.141,
+      "step5": 311.263,
+      "step6": 346.703,
+      "end": 351.531
+    },
+    "boxes": {
+      "poolA": {
+        "x": 301,
+        "y": 372,
+        "width": 737,
+        "height": 289.53125,
+        "t": 257.977
+      },
+      "rejected": {
+        "x": 301,
+        "y": 372,
+        "width": 737,
+        "height": 289.53125,
+        "t": 313.1
+      },
+      "outcome": {
+        "x": 280,
+        "y": 706.53125,
+        "width": 1360,
+        "height": 139,
+        "t": 351.525
+      }
+    },
+    "values": {
+      "step2": "$1.04\n$106\nafter one trade\nStep 2 of 6\nOne trade pushes the price 100×\nThe attacker makes one small trade at $106. The DEX's \"last price\" is now 100× what USTRY is worth. Nothing about USTRY itself changed.\nAttacker pumps the DEX to $106 with one trade · stellar.expert",
+      "step3": "attacker\n13,000 USTRY\nPool A\nasked $1,000,000\nPool B\nasked $1,000,000\nStep 3 of 6\nThe attacker asks both pools for a loan\nThey post 13,000 USTRY as collateral (really worth about $13,520) and ask each pool for $1,000,000. Both pools lend up to 75% of the collateral's value. Only the price they use differs.",
+      "step4": "13,000 × $106\n= $1,378,000 collateral\n× 75% = $1,033,500 limit\n!\nLends $1,000,000\ndrained\nStep 4 of 6\nPool A uses the DEX price and is drained\nPool A values the collateral at the last DEX trade: 13,000 × $106 = $1,378,000. At 75% it may lend $1,033,500, so the $1,000,000 loan is approved. The attacker leaves with the pool's money and the collateral is worth almost nothing.\nPool A lends $1M against 13,000 USTRY · stellar.expert",
+      "step5": "13,000 × $1.04\n= $13,520 collateral\n× 75% = $10,140 max\nDepth cap: 17,631 USTRY\n✓\nBorrow rejected\nStep 5 of 6\nPool B uses Fathom and says no\nPool B values the collateral at Fathom's price, the median of the last 7 sealed auctions, which one DEX trade cannot move: 13,000 × $1.04 = $13,520, so at most $10,140. It also caps how much USTRY it accepts by Fathom's depth: cap 17,631 USTRY (50% of the lowest depth, 35,262). Rejected, and the rejection is recorded on-chain.\nCollateral worth $13,520 at the Fathom price allows $10,140, not $1,000,000.\nPool B rejects the same request (recorded on-chain) · stellar.expert",
+      "poolBLink": "https://stellar.expert/explorer/testnet/tx/11077d57010a5ce7a7081a021fdef1cccbd6aea33876d58bbf7043fa2f6fab89",
+      "step6": "Pool A\n$0 left\nPool B\n$1M left\nStep 6 of 6\nSame attack, two outcomes\nPool A lost $1,000,000. Pool B lost nothing. The only difference was the price source. In February 2026 this pattern drained about $10–11M from a real Stellar lending pool.1",
+      "poolA": "Pool A\nDrained\nUSTRY price it sees\n$106\nMoney left in the pool\n$0",
+      "poolB": "Pool B\nRejected the loan\nUSTRY price it sees\n$1.04\nMoney left in the pool\n$1M"
+    }
+  }
+}
